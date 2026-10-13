@@ -128,8 +128,7 @@ footer .grow{flex:1}
 .el text.muted{fill:#999}
 .el .shape{stroke-width:1.5}
 .el.unknown .shape{stroke-dasharray:4 3}
-.conn path.line{fill:none;stroke:var(--conn);stroke-width:1.8}
-.conn-marker{fill:var(--conn)}
+.conn path.line{fill:none;stroke:var(--conn)}
 .conn path.hit{fill:none;stroke:transparent;stroke-width:14}
 .conn text{font-size:12px;fill:var(--ink);pointer-events:none}
 .conn rect.lbl{fill:var(--paper);stroke:var(--separator-2)}
@@ -139,8 +138,7 @@ footer .grow{flex:1}
 .handle[data-handle=ne],.handle[data-handle=sw]{cursor:nesw-resize}
 .marquee{fill:rgba(var(--accent-rgb),.08);stroke:var(--accent);stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
 .rubber{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 4;fill:none;vector-effect:non-scaling-stroke}
-.conn.selected path.line{stroke:var(--accent);stroke-width:2.5}
-.sel-marker{fill:var(--accent)}
+.conn.selected path.line{stroke:var(--accent) !important}
 /* テーマ選択ポップオーバー */
 .popover-wrap{position:relative}
 .popover{position:absolute;top:30px;right:0;background:var(--bg-toolbar);border-radius:var(--radius-lg);box-shadow:var(--shadow-sheet);padding:12px 14px;display:none;z-index:25;width:372px}
@@ -184,8 +182,7 @@ footer .grow{flex:1}
   <div id="canvas-wrap">
     <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="conn-marker"/></marker>
-        <marker id="arrow-end-sel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="sel-marker"/></marker>
+        <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>
       </defs>
       <g id="world">
         <g id="layer-elements"></g>
@@ -202,7 +199,7 @@ footer .grow{flex:1}
   <span id="st-zoom">ズーム: 100%</span>
   <span id="st-save">自動保存: —</span>
   <span class="grow"></span>
-  <span id="st-hint">ダブルクリックや Enter で文字編集（選択中はそのまま打ち込める）/ Esc で確定 / ⌘+ホイールでズーム / Space+ドラッグでパン / ⌘C/⌘V でコピペ、⌘D で複製 / JSON は ⌘V かドロップ</span>
+  <span id="st-hint">ダブルクリックや Enter で文字編集（選択中はそのまま打ち込める）/ Esc で確定 / ⌘+ホイールでズーム / Space+ドラッグでパン / ⌘C/⌘V でコピペ、⌘D で複製、⌘B で太字 / JSON は ⌘V かドロップ</span>
 </footer>
 <div id="msg"></div>
 <div id="tour"><div class="spot"></div><div class="card"><h3></h3><p></p><div class="foot"><span class="step"></span><button class="btn text" id="tour-skip">スキップ</button><button class="btn" id="tour-prev">戻る</button><button class="btn filled" id="tour-next">次へ</button></div></div></div>
@@ -242,6 +239,10 @@ const PALETTE = { // 図形の塗り。JSONには色名で入る。dark はダ�
   yellow: { fill:'#fff8d6', stroke:'#FFCC00', darkFill:'#4a4020', darkStroke:'#ffd84d' },
 };
 const NOTE_COLORS = { yellow:'#fff3a0', pink:'#ffd1dc', blue:'#cfe6ff', green:'#d4f5d0' };
+const LINE_STYLES = { solid:{ label:'実線', dash:null }, dashed:{ label:'破線', dash:'8 6' }, dotted:{ label:'点線', dash:'2 5' } };
+const LINE_WIDTHS = { thin:{ label:'細', width:1.2 }, normal:{ label:'中', width:1.8 }, thick:{ label:'太', width:3.2 } };
+/* 接続の色。default は現在のテーマの線色、それ以外は PALETTE の枠色を使う */
+function connColor(name){ if (!name || name==='default') return null; return shapeColor(name).stroke; }
 const NOTE_COLORS_DARK = { yellow:'#5a4d14', pink:'#5c2b3a', blue:'#243f5e', green:'#24472c' };
 /* 現在の描画モード（ライト／ダーク）で使う色。要素の見た目だけが変わり、JSONの色名は変わらない */
 function isDark(){ return state.renderMode==='dark'; }
@@ -255,7 +256,7 @@ const ELEMENT_TYPES = { // 種類ごとに既定サイズ・描画・テキス�
   ellipse: { label:'楕円',     key:'o', defaultSize:[160,100], hasText:true,  draw:drawEllipse },
   text:    { label:'テキスト', key:'t', defaultSize:[160,40],  hasText:true,  draw:drawText },
   note:    { label:'付箋',     key:'n', defaultSize:[180,140], hasText:true,  draw:drawNote },
-  callout: { label:'吹き出し', key:'c', defaultSize:[200,80],  hasText:true,  draw:drawCallout },
+  heading: { label:'見出し',   key:'h', defaultSize:[260,44],  hasText:true,  draw:drawHeading },
   unknown: { label:'不明',     key:null,defaultSize:[160,80],  hasText:true,  draw:drawUnknown },
 };
 const TOOLS = [ // ツールバー（ナビゲーションレール）の並び。icon は 24px viewBox の SVG パス
@@ -263,10 +264,10 @@ const TOOLS = [ // ツールバー（ナビゲーションレール）の並び�
   { id:'rect',    label:'矩形',     key:'r', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/>' },
   { id:'ellipse', label:'楕円',     key:'o', icon:'<ellipse cx="12" cy="12" rx="9" ry="7"/>' },
   { id:'text',    label:'テキスト', key:'t', icon:'<path d="M5 5h14M12 5v14M9 19h6"/>' },
+  { id:'heading', label:'見出し',   key:'h', icon:'<path d="M4 5v14M4 12h9M13 5v14"/><path d="M17 9h3M17 12h3M17 15h3"/>' },
   { id:'arrow',   label:'矢印',     key:'a', icon:'<path d="M4 12h15m-5-5 5 5-5 5"/>' },
   { id:'line',    label:'線',       key:'l', icon:'<path d="M5 19 19 5"/><circle cx="5" cy="19" r="1.5"/><circle cx="19" cy="5" r="1.5"/>' },
   { id:'note',    label:'付箋',     key:'n', icon:'<path d="M4 4h16v10l-6 6H4z"/><path d="M14 20v-6h6"/>' },
-  { id:'callout', label:'吹き出し', key:'c', icon:'<path d="M4 4h16v11h-9l-5 4v-4H4z"/>' },
 ];
 const SHORTCUTS = Object.fromEntries(TOOLS.filter(t=>t.key).map(t=>[t.key,t.id]));
 const THEMES = [ // テーマ＝ベース（UIの地色）とキーカラー（アクセント）の組。mode は light / dark。行を足せば増える
@@ -318,10 +319,10 @@ const THEME_KEY = 'claude-board:theme';
 const TOUR_KEY = 'claude-board:tour-done';
 const TOUR_STEPS = [ // ツアーの手順。target は CSS セレクタ（null なら画面中央）。行を足せば増える
   { target:null,            title:'Zukai Prompt へようこそ', body:'言葉で伝えにくい指示を、図にして Claude に渡すためのホワイトボードです。1分ほどで使い方を案内します。' },
-  { target:'#toolbar',      title:'ツールパレット',   body:'矩形・楕円・テキスト・矢印・線・付箋・吹き出し。クリックするか、キー（R / O / T / A / L / N / C）で切り替えます。' },
+  { target:'#toolbar',      title:'ツールパレット',   body:'矩形・楕円・テキスト・見出し・矢印・線・付箋。クリックするか、キー（R / O / T / H / A / L / N）で切り替えます。' },
   { target:'#canvas-wrap',  title:'キャンバス',       body:'ツールを選んでクリックすると置けて、そのまま文字を打てます。ダブルクリックで編集、ドラッグで移動、角のハンドルでサイズ変更。<kbd>⌘</kbd>+ホイールでズーム、Space+ドラッグで移動。<kbd>⌘C</kbd> <kbd>⌘V</kbd> でコピペ、<kbd>⌘D</kbd> で複製。' },
   { target:'.field.instruction', title:'Claude への指示', body:'この図で何をしてほしいかを一言で。「赤枠の部分だけ直して。他は触らない」のように、図と合わせて読まれます。' },
-  { target:'#props',        title:'インスペクタとタグ', body:'要素を選ぶと、ここでタグ（重要・決まり事・変更しない・注意・疑問・やること）や色、文字サイズを変えられます。タグは Claude が優先順位や禁止事項として読み取ります。' },
+  { target:'#props',        title:'インスペクタとタグ', body:'要素を選ぶと、ここでタグ（重要・決まり事・変更しない・注意・疑問・やること）や色、文字サイズ・太字を変えられます。矢印を選ぶと向き・線の種類・太さ・色も。タグは Claude が優先順位や禁止事項として読み取ります。' },
   { target:'#btn-export',   title:'書き出し',         body:'「JSONを書き出し」で名前.board.json を保存し、Claude に「このファイルを見て○○して」と頼みます。「PNGを書き出し」は人が確認する用の画像です。「クリア」でボードを空にします。' },
   { target:'#btn-paste',    title:'JSON を貼り付け',  body:'逆に Claude が返した JSON は、ここに貼り付けるかキャンバスで <kbd>⌘V</kbd> すると、そのまま図として開けます。' },
   { target:'#btn-theme',    title:'テーマ',           body:'ベースの色とキーカラーの組み合わせを、ライト／ダークあわせて 40 種から選べます。' },
@@ -340,7 +341,7 @@ function emptyBoard(){
 }
 const state = {
   board: emptyBoard(), selection:new Set(), tool:'select', view:{x:0,y:0,scale:1},
-  editing:null, drag:null, pendingTarget:null, idSeq:{e:1,c:1}, lastSave:null, renderMode:'light',
+  editing:null, drag:null, idSeq:{e:1,c:1}, lastSave:null, renderMode:'light',
 };
 function nextId(prefix){ let id; do { id = prefix + (state.idSeq[prefix]++); } while (findAny(id)); return id; }
 function findEl(id){ return state.board.elements.find(e=>e.id===id) || null; }
@@ -380,7 +381,7 @@ const Commands = {
     if (def.hasText) { el.text = ''; el.fontSize = 'm'; }
     if (type==='rect' || type==='ellipse') { el.fill='default'; el.stroke='default'; }
     if (type==='note') el.color = 'yellow';
-    if (type==='callout') el.target = null;
+    if (type==='heading') { el.fontSize='l'; el.bold=true; }
     Object.assign(el, props);
     state.board.elements.push(el);
     History.commit('add '+type);
@@ -391,11 +392,6 @@ const Commands = {
   deleteElements(ids){
     const S = new Set(ids); const b = state.board;
     b.connections = b.connections.filter(c=>!S.has(c.from) && !S.has(c.to));
-    for (const el of b.elements){
-      if (el.type==='callout' && el.target && S.has(el.target.elementId)){
-        const tip = Geom.calloutTip(b, el); el.target = tip ? {x:tip.x, y:tip.y} : null;
-      }
-    }
     b.elements = b.elements.filter(e=>!S.has(e.id));
     for (const id of S) state.selection.delete(id);
     History.commit('delete'); return [...S];
@@ -403,10 +399,11 @@ const Commands = {
   addConnection(from, to, arrow='forward'){
     if (from===to || !findEl(from) || !findEl(to)) return null;
     if (state.board.connections.some(c=>c.from===from && c.to===to)) return null;
-    const c = { id:nextId('c'), from, to, arrow, label:'' };
+    const c = { id:nextId('c'), from, to, arrow, label:'', style:'solid', width:'normal', color:'default' };
     state.board.connections.push(c); History.commit('connect'); return c.id;
   },
   updateConnection(id, patch){ const c=findConn(id); if(!c) return null; Object.assign(c, patch); History.commit('update conn'); return id; },
+  reverseConnections(ids){ const S=new Set(ids); for (const c of state.board.connections) if (S.has(c.id)){ [c.from,c.to]=[c.to,c.from]; } History.commit('reverse'); return ids; },
   deleteConnections(ids){ const S=new Set(ids); state.board.connections = state.board.connections.filter(c=>!S.has(c.id)); for (const id of S) state.selection.delete(id); History.commit('delete conn'); return [...S]; },
   setTags(ids, tagId, on){
     for (const id of ids){ const el=findEl(id); if(!el) continue; el.tags = el.tags||[];
@@ -420,13 +417,6 @@ const Commands = {
     for (const el of list) el.z = z++;
     History.commit('reorder'); return ids;
   },
-  setCalloutTarget(id, target){
-    const el=findEl(id); if(!el || el.type!=='callout') return null;
-    if (target && target.elementId){ target = { elementId:target.elementId, rx:Math.min(1,Math.max(0,target.rx)), ry:Math.min(1,Math.max(0,target.ry)) }; }
-    else if (target && typeof target.x==='number') target = { x:target.x, y:target.y };
-    else target = null;
-    el.target = target; History.commit('callout target'); return id;
-  },
   /** 選択要素（とその間の接続）をクリップ形式にする */
   copyClip(ids){
     const S=new Set(ids); const els=state.board.elements.filter(e=>S.has(e.id)).map(clone);
@@ -438,9 +428,8 @@ const Commands = {
     if (!clip || clip.format!=='claude-board-clip' || !Array.isArray(clip.elements)) return [];
     const map={}; let z=maxZ()+1; const newIds=[];
     const els=[...clip.elements].sort((a,b)=>(a.z??0)-(b.z??0)).map(e=>{ const n=clone(e); map[e.id]=n.id=nextId('e'); n.x+=dx; n.y+=dy; n.z=z++; newIds.push(n.id); return n; });
-    for (const n of els){ if (n.type==='callout' && n.target){ if (n.target.elementId){ if (map[n.target.elementId]) n.target={...n.target, elementId:map[n.target.elementId]}; else n.target=null; } else if (typeof n.target.x==='number'){ n.target={x:n.target.x+dx,y:n.target.y+dy}; } } }
     state.board.elements.push(...els);
-    for (const c of clip.connections||[]){ if (map[c.from] && map[c.to]) state.board.connections.push({ id:nextId('c'), from:map[c.from], to:map[c.to], arrow:c.arrow||'forward', label:c.label||'' }); }
+    for (const c of clip.connections||[]){ if (map[c.from] && map[c.to]) state.board.connections.push({ id:nextId('c'), from:map[c.from], to:map[c.to], arrow:c.arrow||'forward', label:c.label||'', style:c.style||'solid', width:c.width||'normal', color:c.color||'default' }); }
     History.commit('paste'); return newIds;
   },
   duplicate(ids){ return Commands.pasteClip(Commands.copyClip(ids)); },
@@ -488,20 +477,13 @@ const Geom = {
     const p1=Geom.anchor(a, bb.cx, bb.cy), p2=Geom.anchor(b, ba.cx, ba.cy);
     return { x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y };
   },
-  calloutTip(board, el){
-    const t=el.target; if (!t) return null;
-    if (t.elementId){ const o=board.elements.find(e=>e.id===t.elementId); if(!o) return null; return { x:o.x+t.rx*o.w, y:o.y+t.ry*o.h }; }
-    if (typeof t.x==='number') return { x:t.x, y:t.y };
-    return null;
-  },
   toRelative(el, x, y){ return { rx:(x-el.x)/el.w, ry:(y-el.y)/el.h }; },
   screenToCanvas(view, sx, sy){ return { x:(sx-view.x)/view.scale, y:(sy-view.y)/view.scale }; },
   canvasToScreen(view, x, y){ return { x:x*view.scale+view.x, y:y*view.scale+view.y }; },
   contentBounds(board){
     if (!board.elements.length) return {x:0,y:0,w:0,h:0};
     let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
-    for (const e of board.elements){ x1=Math.min(x1,e.x); y1=Math.min(y1,e.y); x2=Math.max(x2,e.x+e.w); y2=Math.max(y2,e.y+e.h);
-      if (e.type==='callout'){ const t=Geom.calloutTip(board,e); if(t){ x1=Math.min(x1,t.x); y1=Math.min(y1,t.y); x2=Math.max(x2,t.x); y2=Math.max(y2,t.y);} } }
+    for (const e of board.elements){ x1=Math.min(x1,e.x); y1=Math.min(y1,e.y); x2=Math.max(x2,e.x+e.w); y2=Math.max(y2,e.y+e.h); }
     return { x:x1, y:y1, w:x2-x1, h:y2-y1 };
   },
 };
@@ -516,7 +498,7 @@ const IO = {
       createdAt:board.createdAt||new Date().toISOString(), canvas:{ width:Math.round(cb.w), height:Math.round(cb.h) },
       tags:board.tags||tagDefsForBoard(),
       elements:board.elements.map(e=>{ const o={id:e.id,type:e._unknownType||e.type,x:e.x,y:e.y,w:e.w,h:e.h}; for (const k of Object.keys(e)) if(!(k in o) && k!=='_unknownType' && k!=='tags' && k!=='z') o[k]=e[k]; o.tags=e.tags||[]; o.z=e.z??0; return o; }),
-      connections:board.connections.map(c=>({id:c.id,from:c.from,to:c.to,arrow:c.arrow||'forward',label:c.label||''})),
+      connections:board.connections.map(c=>({id:c.id,from:c.from,to:c.to,arrow:c.arrow||'forward',label:c.label||'',style:c.style||'solid',width:c.width||'normal',color:c.color||'default'})),
     };
     return JSON.stringify(out, null, 2);
   },
@@ -553,6 +535,8 @@ const IO = {
     const scrub = o => { if (o && typeof o==='object') for (const k of Object.keys(o)) if (BAD_KEYS.has(k)) delete o[k]; return o; };
     b.tags = b.tags.filter(t=>t && typeof t==='object').map(t=>({ id:String(t.id), label:String(t.label??t.id), intent:String(t.intent??''), ...(typeof t.color==='string' && /^#[0-9a-f]{3,8}$/i.test(t.color) ? {color:t.color} : {}) }));
     b.elements = (b.elements||[]).map((e,i)=>{ scrub(e); scrub(e.target);
+      if (e.type==='callout'){ // 吹き出しは廃止（使いにくかったため）。付箋に変換する
+        delete e.target; e.type='note'; e.color=e.color||'yellow'; warnings.push(`吹き出し ${e.id} は付箋に変換しました`); }
       e.tags = (Array.isArray(e.tags)?e.tags:[]).filter(t=>typeof t==='string'); if (typeof e.z!=='number') e.z=i;
       if (typeof e.text!=='undefined' && typeof e.text!=='string') e.text=String(e.text);
       if (e.type==='image'){ // 画像機能は廃止（セキュリティ上の判断）。位置だけ残し、画像データは捨てる
@@ -561,12 +545,12 @@ const IO = {
       if (ELEMENT_TYPES[e.type].hasText){ e.text = e.text??''; e.fontSize = FONT_SIZES[e.fontSize]?e.fontSize:'m'; }
       if (e.type==='rect'||e.type==='ellipse'){ if(!PALETTE[e.fill]) e.fill='default'; if(!PALETTE[e.stroke]) e.stroke='default'; }
       if (e.type==='note' && !NOTE_COLORS[e.color]) e.color='yellow';
-      if (e.type==='callout' && e.target===undefined) e.target=null;
       return e;
     });
     const ids = new Set(b.elements.map(e=>e.id));
     b.connections = (b.connections||[]).map(scrub).filter(c=>{ const ok=ids.has(c.from)&&ids.has(c.to); if(!ok) warnings.push(`接続 ${c.id} は端点が無いため捨てました`); return ok; })
-      .map(c=>({ id:c.id, from:c.from, to:c.to, arrow:['none','forward','both'].includes(c.arrow)?c.arrow:'forward', label:c.label||'' }));
+      .map(c=>({ id:c.id, from:c.from, to:c.to, arrow:['none','forward','both'].includes(c.arrow)?c.arrow:'forward', label:c.label||'',
+        style:LINE_STYLES[c.style]?c.style:'solid', width:LINE_WIDTHS[c.width]?c.width:'normal', color:(c.color==='default'||PALETTE[c.color])?c.color||'default':'default' }));
     return { board:b, warnings };
   },
   parse(text){
@@ -624,8 +608,8 @@ const SVG_NS='http://www.w3.org/2000/svg';
 function svgEl(){ return document.getElementById('canvas'); }
 function S(tag, attrs={}, children=[]){ const n=document.createElementNS(SVG_NS, tag); for (const [k,v] of Object.entries(attrs)){ if (v===null||v===undefined) continue; if (k==='class') n.setAttribute('class',v); else if (k==='text') n.textContent=v; else n.setAttribute(k,v); } for (const c of children) if (c) n.appendChild(c); return n; }
 const measureCtx = document.createElement('canvas').getContext('2d');
-function wrapText(text, fontPx, maxW){
-  measureCtx.font = `${fontPx}px -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif`;
+function wrapText(text, fontPx, maxW, bold){
+  measureCtx.font = `${bold?'700 ':''}${fontPx}px -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif`;
   const lines=[];
   for (const para of String(text||'').split('\n')){
     let line='';
@@ -637,11 +621,11 @@ function wrapText(text, fontPx, maxW){
 function textBlock(el, {pad=8, align='center', valign='middle', color=null}={}){
   color = color || inkColor();
   const fs = FONT_SIZES[el.fontSize]||FONT_SIZES.m, lh=fs*1.4;
-  const lines = wrapText(el.text, fs, el.w-pad*2);
+  const lines = wrapText(el.text, fs, el.w-pad*2, el.bold);
   const total = lines.length*lh;
   let y0 = valign==='top' ? el.y+pad+fs : el.y+el.h/2-total/2+fs*0.85;
   const x = align==='left' ? el.x+pad : el.x+el.w/2;
-  const t = S('text',{'font-size':fs,'text-anchor':align==='left'?'start':'middle',fill:color});
+  const t = S('text',{'font-size':fs,'text-anchor':align==='left'?'start':'middle',fill:color,'font-weight':el.bold?700:null});
   lines.forEach((ln,i)=>t.appendChild(S('tspan',{x, y:y0+i*lh, text:ln||' '})));
   return t;
 }
@@ -649,23 +633,10 @@ function drawRect(el){ const p=shapeColor(el.fill), s=shapeColor(el.stroke); ret
 function drawEllipse(el){ const p=shapeColor(el.fill), s=shapeColor(el.stroke); return [S('ellipse',{class:'shape',cx:el.x+el.w/2,cy:el.y+el.h/2,rx:el.w/2,ry:el.h/2,fill:p.fill,stroke:s.stroke}), textBlock(el)]; }
 function drawText(el){ return [S('rect',{x:el.x,y:el.y,width:el.w,height:el.h,fill:'transparent'}), textBlock(el,{align:'left',valign:'top'})]; }
 function drawNote(el){ return [S('rect',{class:'shape',x:el.x,y:el.y,width:el.w,height:el.h,fill:noteColor(el.color),stroke:isDark()?'rgba(255,255,255,.15)':'rgba(0,0,0,.15)'}), textBlock(el,{align:'left',valign:'top'})]; }
-function drawCallout(el){
-  const nodes=[]; const tip=Geom.calloutTip(state.board, el);
-  if (tip && !Geom.inside(el, tip.x, tip.y)){
-    const a=Geom.anchor(el, tip.x, tip.y); const b=Geom.bbox(el);
-    const dx=tip.x-a.x, dy=tip.y-a.y, L=Math.hypot(dx,dy)||1, nx=-dy/L*8, ny=dx/L*8;
-    // 尾の付け根は外周上。辺に沿ってずらす
-    const horizontal = Math.abs(a.y-b.y)<0.5 || Math.abs(a.y-(b.y+b.h))<0.5;
-    const p1 = horizontal ? {x:a.x-8,y:a.y} : {x:a.x,y:a.y-8}, p2 = horizontal ? {x:a.x+8,y:a.y} : {x:a.x,y:a.y+8};
-    void nx; void ny;
-    nodes.push(S('polygon',{points:`${p1.x},${p1.y} ${tip.x},${tip.y} ${p2.x},${p2.y}`,fill:paperColor(),stroke:inkColor(),'stroke-width':1.5}));
-    nodes.push(S('circle',{cx:tip.x,cy:tip.y,r:3,fill:inkColor()}));
-  }
-  nodes.push(S('rect',{class:'shape',x:el.x,y:el.y,width:el.w,height:el.h,rx:10,fill:paperColor(),stroke:inkColor()}));
-  // 尾と枠の境界線を消す
-  if (tip && !Geom.inside(el, tip.x, tip.y)){ const a=Geom.anchor(el,tip.x,tip.y); const horizontal = Math.abs(a.y-el.y)<0.5 || Math.abs(a.y-(el.y+el.h))<0.5; nodes.push(S('line', horizontal?{x1:a.x-7.5,y1:a.y,x2:a.x+7.5,y2:a.y,stroke:paperColor(),'stroke-width':3}:{x1:a.x,y1:a.y-7.5,x2:a.x,y2:a.y+7.5,stroke:paperColor(),'stroke-width':3})); }
-  nodes.push(textBlock(el,{align:'left',valign:'top'}));
-  return nodes;
+function drawHeading(el){ // 見出し：左の短い縦バー＋太字＋下線。あしらいはシンプルに
+  const bar=S('rect',{x:el.x,y:el.y+6,width:4,height:el.h-12,rx:2,fill:'var(--accent)'});
+  const rule=S('line',{x1:el.x,y1:el.y+el.h-1,x2:el.x+el.w,y2:el.y+el.h-1,stroke:inkColor(),'stroke-width':1,'stroke-opacity':.35});
+  return [S('rect',{x:el.x,y:el.y,width:el.w,height:el.h,fill:'transparent'}), bar, rule, textBlock(el,{align:'left',valign:'middle',pad:14})];
 }
 function drawUnknown(el){ return [S('rect',{class:'shape',x:el.x,y:el.y,width:el.w,height:el.h,fill:isDark()?'#333539':'#f8f8f8',stroke:'#999'}), S('text',{x:el.x+6,y:el.y+12,'font-size':10,fill:'#999',text:'不明: '+(el._unknownType||'?')}), textBlock(el)]; }
 function drawTags(el){
@@ -689,7 +660,9 @@ function render(){
   for (const c of b.connections){
     const p=Geom.connectionPath(b,c); if(!p) continue; const sel=state.selection.has(c.id);
     const d=`M${p.x1},${p.y1} L${p.x2},${p.y2}`;
-    const line=S('path',{class:'line',d,'marker-end':c.arrow!=='none'?`url(#arrow-end${sel?'-sel':''})`:null,'marker-start':c.arrow==='both'?`url(#arrow-end${sel?'-sel':''})`:null});
+    const st=LINE_STYLES[c.style]||LINE_STYLES.solid, wd=(LINE_WIDTHS[c.width]||LINE_WIDTHS.normal).width, col=connColor(c.color);
+    const line=S('path',{class:'line',d,'marker-end':c.arrow!=='none'?'url(#arrow-end)':null,'marker-start':c.arrow==='both'?'url(#arrow-end)':null,
+      'stroke-dasharray':st.dash,'stroke-width':wd,style:col?('stroke:'+col):null});
     const g=S('g',{class:'conn'+(sel?' selected':''),'data-id':c.id},[S('path',{class:'hit',d}),line]);
     if (c.label){ const mx=(p.x1+p.x2)/2, my=(p.y1+p.y2)/2; measureCtx.font='12px sans-serif'; const w=measureCtx.measureText(c.label).width+10; g.appendChild(S('rect',{class:'lbl',x:mx-w/2,y:my-9,width:w,height:18,rx:4})); g.appendChild(S('text',{x:mx,y:my+4,'text-anchor':'middle',text:c.label})); }
     layC.appendChild(g);
@@ -700,7 +673,6 @@ function render(){
   if (selEls.length===1 && !state.editing){ const el=selEls[0]; const hs=6/state.view.scale; for (const [h,x,y] of [['nw',el.x,el.y],['ne',el.x+el.w,el.y],['sw',el.x,el.y+el.h],['se',el.x+el.w,el.y+el.h]]) layO.appendChild(S('rect',{class:'handle','data-handle':h,x:x-hs,y:y-hs,width:hs*2,height:hs*2})); }
   if (state.drag && state.drag.kind==='marquee'){ const r=normRect(state.drag.start, state.drag.cur||state.drag.start); layO.appendChild(S('rect',{class:'marquee',...r})); }
   if (state.drag && state.drag.kind==='arrow' && state.drag.cur){ const a=findEl(state.drag.fromId); const p=Geom.anchor(a,state.drag.cur.x,state.drag.cur.y); layO.appendChild(S('line',{class:'rubber',x1:p.x,y1:p.y,x2:state.drag.cur.x,y2:state.drag.cur.y})); }
-  if (state.pendingTarget){ const el=findEl(state.pendingTarget); if(el) layO.appendChild(S('text',{x:el.x,y:el.y-14,'font-size':12,fill:'#2563eb',text:'→ 指し先をクリック（Escで指し先なし）'})); }
   UI.sync();
 }
 function normRect(a,b){ return { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), width:Math.abs(a.x-b.x), height:Math.abs(a.y-b.y) }; }
@@ -738,7 +710,7 @@ const Interaction = (()=>{
     const p=pt(e); svg.setPointerCapture(e.pointerId);
     if (spaceDown || e.button===1){ state.drag={kind:'pan',sx:e.clientX,sy:e.clientY,ov:{...state.view}}; svg.classList.add('panning'); return; }
     if (e.button!==0) return;
-    if (state.tool==='select' && !state.pendingTarget && !(e.target.closest && e.target.closest('[data-handle]'))){
+    if (state.tool==='select' && !(e.target.closest && e.target.closest('[data-handle]'))){
       const hit=Geom.hitTest(state.board,p.x,p.y);
       if (isDoubleClick(p, hit)){
         state.drag=null;
@@ -747,11 +719,6 @@ const Interaction = (()=>{
           const def=ELEMENT_TYPES.text; const id=Commands.addElement('text',{x:p.x-def.defaultSize[0]/2,y:p.y-def.defaultSize[1]/2}); state.selection=new Set([id]); Editor.start(id); }
         return;
       }
-    }
-    if (state.pendingTarget){ // 吹き出しの指し先
-      const id=state.pendingTarget; state.pendingTarget=null; const hit=Geom.hitTest(state.board,p.x,p.y);
-      Commands.setCalloutTarget(id, (hit && hit!==id) ? { elementId:hit, ...Geom.toRelative(findEl(hit),p.x,p.y) } : {x:p.x,y:p.y});
-      state.selection=new Set([id]); setTool('select'); Editor.start(id); return;
     }
     const handle=e.target.closest && e.target.closest('[data-handle]');
     if (state.tool==='select'){
@@ -773,7 +740,6 @@ const Interaction = (()=>{
     if (ELEMENT_TYPES[state.tool]){ // 配置ツール：置いたらすぐ文字入力に入る
       const def=ELEMENT_TYPES[state.tool]; const id=Commands.addElement(state.tool,{x:p.x-def.defaultSize[0]/2,y:p.y-def.defaultSize[1]/2});
       state.selection=new Set([id]); state.drag=null;
-      if (state.tool==='callout'){ state.pendingTarget=id; render(); return; }
       setTool('select'); if (def.hasText) Editor.start(id); else render(); return;
     }
   });
@@ -807,7 +773,7 @@ const Interaction = (()=>{
   window.addEventListener('keydown', e=>{
     if (UI.isPasteOpen()) return;
     const inField = ['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
-    if (e.key==='Escape'){ if (state.editing){ Editor.finish(); return; } if (state.pendingTarget){ state.pendingTarget=null; } document.activeElement.blur(); setTool('select'); state.selection.clear(); render(); return; }
+    if (e.key==='Escape'){ if (state.editing){ Editor.finish(); return; } document.activeElement.blur(); setTool('select'); state.selection.clear(); render(); return; }
     if (inField) return;
     if (e.code==='Space'){ spaceDown=true; svg.classList.add('panning'); e.preventDefault(); return; }
     const mod=e.metaKey||e.ctrlKey;
@@ -815,6 +781,7 @@ const Interaction = (()=>{
     if (mod && e.key.toLowerCase()==='a'){ e.preventDefault(); state.selection=new Set(state.board.elements.map(x=>x.id)); render(); return; }
     if (mod && (e.key.toLowerCase()==='c' || e.key.toLowerCase()==='x')){ const ids=[...state.selection].filter(findEl); if (!ids.length) return; e.preventDefault();
       Clipboard.copy(ids); if (e.key.toLowerCase()==='x') Commands.deleteElements(ids); return; }
+    if (mod && e.key.toLowerCase()==='b'){ const ids=[...state.selection].filter(id=>{ const el=findEl(id); return el && (ELEMENT_TYPES[el.type]||{}).hasText; }); if (!ids.length) return; e.preventDefault(); const all=ids.every(id=>findEl(id).bold); for (const id of ids) findEl(id).bold=!all; History.commit('bold'); return; }
     if (mod && e.key.toLowerCase()==='d'){ const ids=[...state.selection].filter(findEl); if (!ids.length) return; e.preventDefault(); state.selection=new Set(Commands.duplicate(ids)); render(); return; }
     if (e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); UI.deleteSelection(); return; }
     // Googleスライド風：文字を持てる要素を1つ選んでいるとき、Enter か文字キーでそのまま入力に入る
@@ -844,10 +811,13 @@ const Editor = (()=>{
   function start(id, typed, deferFocus){ const el=findEl(id); if(!el) return;
     if (state.editing===id){ if (typed){ ta.value+=typed; ta.focus({preventScroll:true}); const n=ta.value.length; ta.setSelectionRange(n,n); } return; } // 入力中に続けて文字が来た
     state.editing=id; const s=Geom.canvasToScreen(state.view,el.x,el.y); const v=state.view.scale;
-    const center=['rect','ellipse','unknown'].includes(el.type);
-    Object.assign(ta.style,{display:'block',left:s.x+'px',top:s.y+'px',width:el.w*v+'px',height:el.h*v+'px',fontSize:(FONT_SIZES[el.fontSize]||15)*v+'px',textAlign:center?'center':'left',
-      background: el.type==='note' ? noteColor(el.color) : (el.type==='rect'||el.type==='ellipse') ? shapeColor(el.fill).fill : paperColor(), color: inkColor()});
-    ta.value=(el.text||'') + (typed||'');
+    const center=['rect','ellipse','unknown','heading'].includes(el.type);
+    Object.assign(ta.style,{display:'block',left:s.x+'px',top:s.y+'px',width:el.w*v+'px',height:el.h*v+'px',fontSize:(FONT_SIZES[el.fontSize]||15)*v+'px',textAlign:(center && el.type!=='heading')?'center':'left',
+      background: el.type==='note' ? noteColor(el.color) : (el.type==='rect'||el.type==='ellipse') ? shapeColor(el.fill).fill : paperColor(), color: inkColor(),
+      borderRadius: el.type==='ellipse' ? '50%' : (el.type==='rect' ? '8px' : '6px'),
+      paddingLeft: (el.type==='ellipse' ? el.w*v*0.15 : el.type==='heading' ? 14*v : 6)+'px', paddingRight: (el.type==='ellipse' ? el.w*v*0.15 : 6)+'px',
+      fontWeight: el.bold?'700':'400'});
+    ta.style.fontWeight=el.bold?'700':'400'; ta.value=(el.text||'') + (typed||'');
     fitPadding(center ? el : null);
     render();
     const focusNow=()=>{ if (state.editing!==id) return; ta.focus({preventScroll:true}); const n=ta.value.length; ta.setSelectionRange(n,n);
@@ -856,10 +826,11 @@ const Editor = (()=>{
     startedAt=performance.now(); focusNow(); void deferFocus; }
   function finish(){ if(!state.editing) return; const id=state.editing; state.editing=null; ta.blur(); ta.style.display='none'; const el=findEl(id); if (el && el.text!==ta.value) Commands.updateElement(id,{text:ta.value}); else render(); }
   let centerEl=null;
-  function fitPadding(el){ centerEl=el; if (!el){ ta.style.paddingTop='6px'; return; } const v=state.view.scale; const fs=(FONT_SIZES[el.fontSize]||15)*v, lines=ta.value.split('\n').length; ta.style.paddingTop=Math.max(6, (el.h*v - lines*fs*1.4)/2)+'px'; }
+  function fitPadding(el){ centerEl=el; if (!el){ ta.style.paddingTop='6px'; return; } const v=state.view.scale; const fs=(FONT_SIZES[el.fontSize]||15)*v, lines=ta.value.split('\n').length; ta.style.paddingTop=Math.max(el.type==='ellipse'?el.h*v*0.12:6, (el.h*v - lines*fs*1.4)/2)+'px'; }
   ta.addEventListener('input', ()=>fitPadding(centerEl));
   ta.addEventListener('blur', finish);
-  ta.addEventListener('keydown', e=>{ if (e.key==='Escape' || (e.key==='Enter' && (e.metaKey||e.ctrlKey))){ e.preventDefault(); finish(); } else if (e.key==='Tab'){ e.preventDefault(); finish(); } e.stopPropagation(); });
+  ta.addEventListener('keydown', e=>{ if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='b'){ e.preventDefault(); const el=findEl(state.editing); if (el){ el.bold=!el.bold; ta.style.fontWeight=el.bold?'700':'400'; } return; }
+    if (e.key==='Escape' || (e.key==='Enter' && (e.metaKey||e.ctrlKey))){ e.preventDefault(); finish(); } else if (e.key==='Tab'){ e.preventDefault(); finish(); } e.stopPropagation(); });
   ta.addEventListener('pointerdown', e=>e.stopPropagation());
   // Enter キーで編集を開いた直後、その同じキー入力による改行が入力欄に入らないようにする
   ta.addEventListener('beforeinput', e=>{ if (e.inputType==='insertLineBreak' && performance.now()-startedAt<80) e.preventDefault(); });
@@ -981,7 +952,12 @@ const UI = (()=>{
     if (cs.length===1 && !els.length){ const c=cs[0];
       const sel=document.createElement('select'); for (const [v,l] of [['none','線（向きなし）'],['forward','片方向 →'],['both','双方向 ↔']]){ const o=document.createElement('option'); o.value=v; o.textContent=l; o.selected=c.arrow===v; sel.appendChild(o); } sel.onchange=()=>Commands.updateConnection(c.id,{arrow:sel.value});
       const inp=document.createElement('input'); inp.type='text'; inp.placeholder='ラベル（例: 呼び出す）'; inp.value=c.label||''; inp.onchange=()=>Commands.updateConnection(c.id,{label:inp.value});
-      sec('接続 '+c.id, sel, inp); sec('操作', btns(btn('削除',()=>Commands.deleteConnections([c.id]),'text error'))); return;
+      sec('接続 '+c.id, sel, inp);
+      const segOf=(defs,cur,key)=>{ const seg=document.createElement('div'); seg.className='segmented'; for (const [k,v] of Object.entries(defs)){ const b=document.createElement('button'); b.textContent=v.label; b.className=cur===k?'on':''; b.onclick=()=>Commands.updateConnection(c.id,{[key]:k}); seg.appendChild(b); } return seg; };
+      sec('線の種類', segOf(LINE_STYLES, c.style||'solid', 'style')); sec('太さ', segOf(LINE_WIDTHS, c.width||'normal', 'width'));
+      const sw=document.createElement('div'); sw.className='swatches'; for (const name of ['default',...Object.keys(PALETTE).filter(n=>n!=='default')]){ const sdiv=document.createElement('div'); const col=connColor(name)||getComputedStyle(document.documentElement).getPropertyValue('--conn').trim(); sdiv.className='swatch'+((c.color||'default')===name?' on':''); sdiv.style.background=col; sdiv.title=name==='default'?'既定':name; sdiv.onclick=()=>Commands.updateConnection(c.id,{color:name}); sw.appendChild(sdiv); }
+      sec('色', sw);
+      sec('操作', btns(btn('向きを逆にする',()=>Commands.reverseConnections([c.id])), btn('削除',()=>Commands.deleteConnections([c.id]),'text error'))); return;
     }
     const ids=els.map(e=>e.id);
     // タグ
@@ -998,11 +974,12 @@ const UI = (()=>{
       const sw=document.createElement('div'); sw.className='swatches'; for (const name of Object.keys(NOTE_COLORS)){ const s=document.createElement('div'); s.className='swatch'+(els.every(e=>e.color===name)?' on':''); s.style.background=noteColor(name); s.onclick=()=>{ for(const id of ids) findEl(id).color=name; History.commit('note color'); }; sw.appendChild(s); } sec('付箋の色', sw);
     }
     if (els.every(e=>(ELEMENT_TYPES[e.type]||{}).hasText)){
+      const allBold=els.every(e=>e.bold); const bb=btn(allBold?'太字を解除':'太字にする（⌘B）',()=>{ for(const id of ids) findEl(id).bold=!allBold; History.commit('bold'); }, allBold?'filled':'');
+      sec('文字', btns(bb));
       const seg=document.createElement('div'); seg.className='segmented';
       for (const k of Object.keys(FONT_SIZES)){ const b=document.createElement('button'); b.textContent={s:'小',m:'中',l:'大'}[k]; b.className=els.every(e=>e.fontSize===k)?'on':''; b.onclick=()=>{ for(const id of ids) findEl(id).fontSize=k; History.commit('font'); }; seg.appendChild(b); }
       sec('文字サイズ', seg);
     }
-    if (els.length===1 && els[0].type==='callout'){ sec('吹き出し', btns(btn('指し先を選び直す',()=>{ state.pendingTarget=els[0].id; render(); }), btn('指し先なし',()=>Commands.setCalloutTarget(els[0].id,null)))); }
     sec('操作', btns(btn('前面へ',()=>Commands.reorder(ids,'front')), btn('背面へ',()=>Commands.reorder(ids,'back')), btn('削除',deleteSelection,'text error')));
   }
   function sync(){
