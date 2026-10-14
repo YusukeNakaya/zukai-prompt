@@ -128,7 +128,7 @@ footer .grow{flex:1}
 .el text.muted{fill:#999}
 .el .shape{stroke-width:1.5}
 .el.unknown .shape{stroke-dasharray:4 3}
-.conn path.line{fill:none;stroke:var(--conn)}
+.conn path.line{fill:none;stroke:var(--conn);stroke-width:1.8}
 .conn path.hit{fill:none;stroke:transparent;stroke-width:14}
 .conn text{font-size:12px;fill:var(--ink);pointer-events:none}
 .conn rect.lbl{fill:var(--paper);stroke:var(--separator-2)}
@@ -138,7 +138,7 @@ footer .grow{flex:1}
 .handle[data-handle=ne],.handle[data-handle=sw]{cursor:nesw-resize}
 .marquee{fill:rgba(var(--accent-rgb),.08);stroke:var(--accent);stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
 .rubber{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 4;fill:none;vector-effect:non-scaling-stroke}
-.conn.selected path.line{stroke:var(--accent) !important}
+.conn.selected path.line{stroke:var(--accent);stroke-width:2.5}
 /* テーマ選択ポップオーバー */
 .popover-wrap{position:relative}
 .popover{position:absolute;top:30px;right:0;background:var(--bg-toolbar);border-radius:var(--radius-lg);box-shadow:var(--shadow-sheet);padding:12px 14px;display:none;z-index:25;width:372px}
@@ -240,9 +240,7 @@ const PALETTE = { // 図形の塗り。JSONには色名で入る。dark はダ�
 };
 const NOTE_COLORS = { yellow:'#fff3a0', pink:'#ffd1dc', blue:'#cfe6ff', green:'#d4f5d0' };
 const LINE_STYLES = { solid:{ label:'実線', dash:null }, dashed:{ label:'破線', dash:'8 6' }, dotted:{ label:'点線', dash:'2 5' } };
-const LINE_WIDTHS = { thin:{ label:'細', width:1.2 }, normal:{ label:'中', width:1.8 }, thick:{ label:'太', width:3.2 } };
-/* 接続の色。default は現在のテーマの線色、それ以外は PALETTE の枠色を使う */
-function connColor(name){ if (!name || name==='default') return null; return shapeColor(name).stroke; }
+
 const NOTE_COLORS_DARK = { yellow:'#5a4d14', pink:'#5c2b3a', blue:'#243f5e', green:'#24472c' };
 /* 現在の描画モード（ライト／ダーク）で使う色。要素の見た目だけが変わり、JSONの色名は変わらない */
 function isDark(){ return state.renderMode==='dark'; }
@@ -322,7 +320,7 @@ const TOUR_STEPS = [ // ツアーの手順。target は CSS セレクタ（null 
   { target:'#toolbar',      title:'ツールパレット',   body:'矩形・楕円・テキスト・見出し・矢印・線・付箋。クリックするか、キー（R / O / T / H / A / L / N）で切り替えます。' },
   { target:'#canvas-wrap',  title:'キャンバス',       body:'ツールを選んでクリックすると置けて、そのまま文字を打てます。ダブルクリックで編集、ドラッグで移動、角のハンドルでサイズ変更。<kbd>⌘</kbd>+ホイールでズーム、Space+ドラッグで移動。<kbd>⌘C</kbd> <kbd>⌘V</kbd> でコピペ、<kbd>⌘D</kbd> で複製。' },
   { target:'.field.instruction', title:'Claude への指示', body:'この図で何をしてほしいかを一言で。「赤枠の部分だけ直して。他は触らない」のように、図と合わせて読まれます。' },
-  { target:'#props',        title:'インスペクタとタグ', body:'要素を選ぶと、ここでタグ（重要・決まり事・変更しない・注意・疑問・やること）や色、文字サイズ・太字を変えられます。矢印を選ぶと向き・線の種類・太さ・色も。タグは Claude が優先順位や禁止事項として読み取ります。' },
+  { target:'#props',        title:'インスペクタとタグ', body:'要素を選ぶと、ここでタグ（重要・決まり事・変更しない・注意・疑問・やること）や色、文字サイズ・太字を変えられます。矢印を選ぶと向き・線の種類も。タグは Claude が優先順位や禁止事項として読み取ります。' },
   { target:'#btn-export',   title:'書き出し',         body:'「JSONを書き出し」で名前.board.json を保存し、Claude に「このファイルを見て○○して」と頼みます。「PNGを書き出し」は人が確認する用の画像です。「クリア」でボードを空にします。' },
   { target:'#btn-paste',    title:'JSON を貼り付け',  body:'逆に Claude が返した JSON は、ここに貼り付けるかキャンバスで <kbd>⌘V</kbd> すると、そのまま図として開けます。' },
   { target:'#btn-theme',    title:'テーマ',           body:'ベースの色とキーカラーの組み合わせを、ライト／ダークあわせて 40 種から選べます。' },
@@ -399,7 +397,7 @@ const Commands = {
   addConnection(from, to, arrow='forward'){
     if (from===to || !findEl(from) || !findEl(to)) return null;
     if (state.board.connections.some(c=>c.from===from && c.to===to)) return null;
-    const c = { id:nextId('c'), from, to, arrow, label:'', style:'solid', width:'normal', color:'default' };
+    const c = { id:nextId('c'), from, to, arrow, label:'', style:'solid' };
     state.board.connections.push(c); History.commit('connect'); return c.id;
   },
   updateConnection(id, patch){ const c=findConn(id); if(!c) return null; Object.assign(c, patch); History.commit('update conn'); return id; },
@@ -429,7 +427,7 @@ const Commands = {
     const map={}; let z=maxZ()+1; const newIds=[];
     const els=[...clip.elements].sort((a,b)=>(a.z??0)-(b.z??0)).map(e=>{ const n=clone(e); map[e.id]=n.id=nextId('e'); n.x+=dx; n.y+=dy; n.z=z++; newIds.push(n.id); return n; });
     state.board.elements.push(...els);
-    for (const c of clip.connections||[]){ if (map[c.from] && map[c.to]) state.board.connections.push({ id:nextId('c'), from:map[c.from], to:map[c.to], arrow:c.arrow||'forward', label:c.label||'', style:c.style||'solid', width:c.width||'normal', color:c.color||'default' }); }
+    for (const c of clip.connections||[]){ if (map[c.from] && map[c.to]) state.board.connections.push({ id:nextId('c'), from:map[c.from], to:map[c.to], arrow:c.arrow||'forward', label:c.label||'', style:c.style||'solid' }); }
     History.commit('paste'); return newIds;
   },
   duplicate(ids){ return Commands.pasteClip(Commands.copyClip(ids)); },
@@ -498,7 +496,7 @@ const IO = {
       createdAt:board.createdAt||new Date().toISOString(), canvas:{ width:Math.round(cb.w), height:Math.round(cb.h) },
       tags:board.tags||tagDefsForBoard(),
       elements:board.elements.map(e=>{ const o={id:e.id,type:e._unknownType||e.type,x:e.x,y:e.y,w:e.w,h:e.h}; for (const k of Object.keys(e)) if(!(k in o) && k!=='_unknownType' && k!=='tags' && k!=='z') o[k]=e[k]; o.tags=e.tags||[]; o.z=e.z??0; return o; }),
-      connections:board.connections.map(c=>({id:c.id,from:c.from,to:c.to,arrow:c.arrow||'forward',label:c.label||'',style:c.style||'solid',width:c.width||'normal',color:c.color||'default'})),
+      connections:board.connections.map(c=>({id:c.id,from:c.from,to:c.to,arrow:c.arrow||'forward',label:c.label||'',style:c.style||'solid'})),
     };
     return JSON.stringify(out, null, 2);
   },
@@ -550,7 +548,7 @@ const IO = {
     const ids = new Set(b.elements.map(e=>e.id));
     b.connections = (b.connections||[]).map(scrub).filter(c=>{ const ok=ids.has(c.from)&&ids.has(c.to); if(!ok) warnings.push(`接続 ${c.id} は端点が無いため捨てました`); return ok; })
       .map(c=>({ id:c.id, from:c.from, to:c.to, arrow:['none','forward','both'].includes(c.arrow)?c.arrow:'forward', label:c.label||'',
-        style:LINE_STYLES[c.style]?c.style:'solid', width:LINE_WIDTHS[c.width]?c.width:'normal', color:(c.color==='default'||PALETTE[c.color])?c.color||'default':'default' }));
+        style:LINE_STYLES[c.style]?c.style:'solid' })); // 旧ファイルの width/color は読み捨てる（機能削除）
     return { board:b, warnings };
   },
   parse(text){
@@ -660,9 +658,8 @@ function render(){
   for (const c of b.connections){
     const p=Geom.connectionPath(b,c); if(!p) continue; const sel=state.selection.has(c.id);
     const d=`M${p.x1},${p.y1} L${p.x2},${p.y2}`;
-    const st=LINE_STYLES[c.style]||LINE_STYLES.solid, wd=(LINE_WIDTHS[c.width]||LINE_WIDTHS.normal).width, col=connColor(c.color);
-    const line=S('path',{class:'line',d,'marker-end':c.arrow!=='none'?'url(#arrow-end)':null,'marker-start':c.arrow==='both'?'url(#arrow-end)':null,
-      'stroke-dasharray':st.dash,'stroke-width':wd,style:col?('stroke:'+col):null});
+    const st=LINE_STYLES[c.style]||LINE_STYLES.solid;
+    const line=S('path',{class:'line',d,'marker-end':c.arrow!=='none'?'url(#arrow-end)':null,'marker-start':c.arrow==='both'?'url(#arrow-end)':null,'stroke-dasharray':st.dash});
     const g=S('g',{class:'conn'+(sel?' selected':''),'data-id':c.id},[S('path',{class:'hit',d}),line]);
     if (c.label){ const mx=(p.x1+p.x2)/2, my=(p.y1+p.y2)/2; measureCtx.font='12px sans-serif'; const w=measureCtx.measureText(c.label).width+10; g.appendChild(S('rect',{class:'lbl',x:mx-w/2,y:my-9,width:w,height:18,rx:4})); g.appendChild(S('text',{x:mx,y:my+4,'text-anchor':'middle',text:c.label})); }
     layC.appendChild(g);
@@ -954,9 +951,7 @@ const UI = (()=>{
       const inp=document.createElement('input'); inp.type='text'; inp.placeholder='ラベル（例: 呼び出す）'; inp.value=c.label||''; inp.onchange=()=>Commands.updateConnection(c.id,{label:inp.value});
       sec('接続 '+c.id, sel, inp);
       const segOf=(defs,cur,key)=>{ const seg=document.createElement('div'); seg.className='segmented'; for (const [k,v] of Object.entries(defs)){ const b=document.createElement('button'); b.textContent=v.label; b.className=cur===k?'on':''; b.onclick=()=>Commands.updateConnection(c.id,{[key]:k}); seg.appendChild(b); } return seg; };
-      sec('線の種類', segOf(LINE_STYLES, c.style||'solid', 'style')); sec('太さ', segOf(LINE_WIDTHS, c.width||'normal', 'width'));
-      const sw=document.createElement('div'); sw.className='swatches'; for (const name of ['default',...Object.keys(PALETTE).filter(n=>n!=='default')]){ const sdiv=document.createElement('div'); const col=connColor(name)||getComputedStyle(document.documentElement).getPropertyValue('--conn').trim(); sdiv.className='swatch'+((c.color||'default')===name?' on':''); sdiv.style.background=col; sdiv.title=name==='default'?'既定':name; sdiv.onclick=()=>Commands.updateConnection(c.id,{color:name}); sw.appendChild(sdiv); }
-      sec('色', sw);
+      sec('線の種類', segOf(LINE_STYLES, c.style||'solid', 'style'));
       sec('操作', btns(btn('向きを逆にする',()=>Commands.reverseConnections([c.id])), btn('削除',()=>Commands.deleteConnections([c.id]),'text error'))); return;
     }
     const ids=els.map(e=>e.id);
