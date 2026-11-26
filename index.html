@@ -98,7 +98,7 @@ header{background:var(--bg-toolbar);display:flex;flex-direction:column;border-bo
 footer{background:var(--bg-toolbar);border-top:1px solid var(--separator);padding:4px 14px;display:flex;gap:14px;color:var(--label-2);font-size:11px}
 footer .grow{flex:1}
 /* 通知（下部に浮かぶバナー） */
-#msg{position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);opacity:0;pointer-events:none;background:var(--bg-popover);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--label);padding:10px 16px;border-radius:var(--radius-lg);box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.18);max-width:640px;font-size:13px;z-index:20;transition:opacity .2s,transform .2s}
+#msg{position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);opacity:0;pointer-events:none;background:var(--bg-popover);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--label);padding:10px 16px;border-radius:var(--radius-lg);box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.18);max-width:min(720px, calc(100vw - 48px));font-size:13px;line-height:1.5;z-index:20;transition:opacity .2s,transform .2s}
 #msg.show{opacity:1;transform:translate(-50%,0)}
 #msg.error{color:var(--red)}
 /* シート */
@@ -133,6 +133,7 @@ footer .grow{flex:1}
 .conn text{font-size:12px;fill:var(--ink);pointer-events:none}
 .conn rect.lbl{fill:var(--paper);stroke:var(--separator-2)}
 .tagbadge text{font-size:10px;fill:#fff;font-weight:600}
+.tagwarn{margin-top:8px;padding:6px 8px;border-radius:8px;font-size:12px;line-height:1.4;color:#FF3B30;background:rgba(255,59,48,.10)}
 .sel-box{fill:none;stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none}
 .handle{fill:#fff;stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:nwse-resize}
 .handle[data-handle=ne],.handle[data-handle=sw]{cursor:nesw-resize}
@@ -151,6 +152,18 @@ footer .grow{flex:1}
 .popover .accent.on{background:rgba(var(--accent-rgb),.14)}
 .popover .accent .sw{width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);background:linear-gradient(135deg,var(--sw-base) 50%,var(--sw-key) 50%)}
 .popover .name{margin-top:8px;font-size:11px;color:var(--label-2)}
+/* 設定（ギア）メニュー */
+.popover.menu{width:260px;padding:6px}
+.popover.menu h4{margin:6px 8px 4px}
+.menu-item{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:7px 8px;border-radius:6px;text-align:left;color:var(--label)}
+.menu-item:hover{background:var(--bg-control-2)}
+.menu-item .sub{font-size:11px;color:var(--label-2)}
+.menu-item.danger .main{color:var(--red);font-weight:500}
+.btn.danger{background:var(--red);color:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.12)}
+.btn.danger:hover{background:#e6352b}
+.dialog ul.reset-list{margin:0;padding-left:1.3em;font-size:12px;color:var(--label);line-height:1.7}
+.dialog label.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--label);cursor:pointer}
+.dialog label.chk input{margin:0}
 .icon-btn .dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--bg-window) 50%,var(--accent) 50%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 </style>
 </head>
@@ -164,6 +177,7 @@ footer .grow{flex:1}
     <span class="grow"></span>
     <button class="btn" id="btn-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>JSONをコピー</button>
     <button class="btn" id="btn-png"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m6 16 3.5-4 2.5 3 3-4 4 5"/></svg>PNGを書き出し</button>
+    <button class="btn" id="btn-svg"><svg viewBox="0 0 24 24"><path d="M5 19 12 5l7 14"/><circle cx="5" cy="19" r="1.6"/><circle cx="12" cy="5" r="1.6"/><circle cx="19" cy="19" r="1.6"/></svg>SVGを書き出し</button>
     <button class="btn filled" id="btn-export"><svg viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>JSONを書き出し</button>
     <button class="icon-btn" id="btn-tour" title="使い方ツアー"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.7M12 17h.01"/></svg></button>
     <span class="popover-wrap"><button class="icon-btn" id="btn-theme" title="テーマカラー"><span class="dot"></span></button>
@@ -171,6 +185,11 @@ footer .grow{flex:1}
     <span class="sep"></span>
     <button class="icon-btn" id="btn-undo" title="元に戻す (⌘Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
     <button class="icon-btn" id="btn-redo" title="やり直す (⌘⇧Z)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    <span class="sep"></span>
+    <span class="popover-wrap"><button class="icon-btn" id="btn-settings" title="設定" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <div class="popover menu" id="settings-menu" role="menu"><h4>設定</h4>
+        <button class="menu-item danger" id="menu-reset" role="menuitem"><span class="main">初期化…</span><span class="sub">ボード・テーマ・履歴を消して最初の状態に戻す。動かなくなったときに</span></button>
+      </div></span>
   </div>
   <div class="fields">
     <div class="field title"><input type="text" id="title" placeholder="例: ログイン画面の改修"><label for="title">タイトル</label></div>
@@ -183,6 +202,8 @@ footer .grow{flex:1}
     <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>
+        <filter id="note-shadow" x="-10%" y="-10%" width="125%" height="135%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.6" flood-color="#000" flood-opacity=".22"/></filter>
+        <linearGradient id="note-flap" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".55" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></linearGradient>
       </defs>
       <g id="world">
         <g id="layer-elements"></g>
@@ -199,7 +220,7 @@ footer .grow{flex:1}
   <span id="st-zoom">ズーム: 100%</span>
   <span id="st-save">自動保存: —</span>
   <span class="grow"></span>
-  <span id="st-hint">ダブルクリックや Enter で文字編集（選択中はそのまま打ち込める）/ Esc で確定 / ⌘+ホイールでズーム / Space+ドラッグでパン / ⌘C/⌘V でコピペ、⌘D で複製、⌘B で太字 / JSON は ⌘V かドロップ</span>
+  <span id="st-hint">ダブルクリックや Enter で文字編集（選択中はそのまま打ち込める）/ Esc で確定 / ⌘+ホイールでズーム / Space+ドラッグでパン / ⌘C/⌘V でコピペ、⌘D で複製、⌘B で太字 / ⌘⇧X で取り消し線 / JSON は ⌘V かドロップ</span>
 </footer>
 <div id="msg"></div>
 <div id="tour"><div class="spot"></div><div class="card"><h3></h3><p></p><div class="foot"><span class="step"></span><button class="btn text" id="tour-skip">スキップ</button><button class="btn" id="tour-prev">戻る</button><button class="btn filled" id="tour-next">次へ</button></div></div></div>
@@ -215,21 +236,123 @@ footer .grow{flex:1}
     </div>
   </div>
 </div>
+<div class="scrim" id="reset-dialog">
+  <div class="dialog" role="dialog" aria-labelledby="reset-title" style="width:min(460px,calc(100vw - 48px))">
+    <h2 id="reset-title">初期化</h2>
+    <p>Zukai Prompt を最初の状態に戻します。このブラウザに保存されている次の情報が消え、ページを読み込み直します。</p>
+    <ul class="reset-list"><li>自動保存されたボード</li><li>元に戻す（⌘Z）の履歴</li><li>テーマの選択</li><li>使い方ツアーを見たかどうか</li></ul>
+    <p>書き出した JSON・PNG・SVG のファイルは消えません。他のアプリや Web サイトの保存データにも触りません。</p>
+    <label class="chk"><input type="checkbox" id="reset-backup"> <span id="reset-backup-label">初期化の前に、今のボードを JSON で書き出す</span></label>
+    <div class="actions">
+      <button class="btn text" id="reset-cancel">キャンセル</button>
+      <button class="btn danger" id="reset-run">初期化する</button>
+    </div>
+  </div>
+</div>
 <input type="file" id="file-json" accept=".json,application/json" hidden>
+
+<script>
+/* =====================================================================
+ * 復旧（初期化）— 本体のスクリプトから独立させている。
+ * 本体が起動中にエラーで止まっても、ギアの「初期化」と URL の ?reset は動く。
+ * 消すのは "claude-board:" で始まるキーだけ（file:// では他のローカルHTMLと保存場所を共有しうるため、全消去はしない）
+ * ===================================================================== */
+(function(){
+  const PREFIX='claude-board:';
+  const keys=(st)=>{ const out=[]; try { for (let i=0;i<st.length;i++){ const k=st.key(i); if (k && k.startsWith(PREFIX)) out.push(k); } } catch(e){} return out; };
+  function wipe(){ let n=0; for (const st of [window.localStorage, window.sessionStorage]){ try { for (const k of keys(st)){ st.removeItem(k); n++; } } catch(e){} } return n; }
+  /** 今のボードを JSON で書き出す。本体が動いていれば画面の内容、動いていなければ自動保存の生データ */
+  function backup(){
+    let text=null; try { if (window.Board && Board.IO && Board.state && Board.state.board.elements.length) text=Board.IO.serialize(Board.state.board); } catch(e){}
+    if (!text){ try { text=localStorage.getItem(PREFIX+'autosave-broken') || (window.Board ? null : localStorage.getItem(PREFIX+'autosave')); } catch(e){} }
+    if (!text) return false;
+    const d=new Date(), pad=n=>String(n).padStart(2,'0'), name=`backup-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.board.json`;
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    return true;
+  }
+  /** 書き出す価値のあるデータがあるか：画面のボードに要素がある、退避した壊れたデータがある、または本体が動いておらず自動保存がある */
+  function hasBoard(){ let n=0; try { if (window.Board && Board.state) n=Board.state.board.elements.length; } catch(e){}
+    let raw=null; try { raw=localStorage.getItem(PREFIX+'autosave-broken') || (window.Board ? null : localStorage.getItem(PREFIX+'autosave')); } catch(e){}
+    return n>0 || !!raw; }
+  /** 初期化を実行してページを読み込み直す */
+  function reset({withBackup=false}={}){
+    window.__zpResetting=true;                       // 本体の自動保存が書き戻さないように
+    const doIt=()=>{ wipe(); location.replace(location.href.split('#')[0].replace(/[?&]reset(=[^&]*)?/,'').replace(/\?$/,'')); };
+    if (withBackup && backup()) setTimeout(doIt, 300); else doIt();   // ダウンロードが始まるのを待ってから
+  }
+  window.ZukaiReset={ reset, wipe, backup, keys:()=>keys(localStorage) };
+
+  // URL に ?reset（または #reset）を付けて開くと、本体が動く前に消して普通に起動する
+  if (/[?&]reset(=|&|$)/.test(location.search) || location.hash==='#reset'){
+    const n=wipe(); try { history.replaceState(null,'',location.href.split('#')[0].replace(/[?&]reset(=[^&]*)?/,'').replace(/\?$/,'')); } catch(e){}
+    window.__zpResetNotice=`初期化しました（保存データ ${n} 件を消去）`;
+  }
+
+  // 起動中のエラーを見張る。本体の起動が終わる前にエラーが出たら、復旧の方法を表示する
+  window.addEventListener('error', ev=>{ if (window.__zpBooted) return; const m=document.getElementById('msg'); if (!m) return;
+    m.textContent='読み込み中にエラーが起きました（'+(ev.message||'不明')+'）。右上のギア → 「初期化…」で最初の状態に戻せます。'; m.className='error show'; });
+
+  // ギアメニューと初期化ダイアログ
+  const $=id=>document.getElementById(id), menu=$('settings-menu'), dlg=$('reset-dialog'), chk=$('reset-backup');
+  $('btn-settings').addEventListener('click', e=>{ e.stopPropagation(); menu.classList.toggle('open'); });
+  document.addEventListener('pointerdown', e=>{ if (!e.target.closest('#settings-menu') && !e.target.closest('#btn-settings')) menu.classList.remove('open'); });
+  function openDialog(){ menu.classList.remove('open'); const has=hasBoard(); chk.checked=has; chk.disabled=!has; $('reset-backup-label').style.opacity=has?1:.5; dlg.classList.add('open'); setTimeout(()=>$('reset-cancel').focus(),0); }
+  function closeDialog(){ dlg.classList.remove('open'); }
+  $('menu-reset').addEventListener('click', openDialog);
+  $('reset-cancel').addEventListener('click', closeDialog);
+  $('reset-run').addEventListener('click', ()=>reset({withBackup:chk.checked}));
+  dlg.addEventListener('pointerdown', e=>{ if (e.target===dlg) closeDialog(); });
+  // ダイアログやメニューが開いている間は、本体のショートカットに渡さない
+  window.addEventListener('keydown', e=>{
+    if (dlg.classList.contains('open')){ e.stopImmediatePropagation(); if (e.key==='Escape') closeDialog(); return; }
+    if (menu.classList.contains('open') && e.key==='Escape'){ e.stopImmediatePropagation(); menu.classList.remove('open'); }
+  }, true);
+  window.ZukaiReset.openDialog=openDialog;
+})();
+</script>
 
 <script>
 'use strict';
 /* =====================================================================
  * 2.1 Config — 変わりやすい所はここに寄せる（基本設計10章）
  * ===================================================================== */
-const TAG_DEFS = [ // 行を足せばタグが増える。order はスキルが拾う順の目安
-  { id:'important', label:'重要',       color:'#FF3B30', intent:'最優先で扱う',                       order:1 },
-  { id:'rule',      label:'決まり事',   color:'#AF52DE', intent:'守るべき制約。違反する提案をしない',   order:2 },
-  { id:'keep',      label:'変更しない', color:'#34C759', intent:'触ってはいけない範囲',                 order:3 },
-  { id:'caution',   label:'注意',       color:'#FF9500', intent:'慎重に扱う。壊しやすい・副作用がある', order:4 },
-  { id:'question',  label:'疑問',       color:'#007AFF', intent:'人が迷っている点。作業前に確認する',   order:5 },
-  { id:'todo',      label:'やること',   color:'#8E8E93', intent:'実施すべき作業項目',                   order:6 },
+const TAG_DEFS = [ // 行を足せばタグが増える。order はスキルが拾う順の目安。id は JSON に入るので変えない（表示名 label は変えてよい）
+  { id:'important',  label:'重要',         color:'#FF3B30', intent:'最優先で扱う',                                           order:1 },
+  { id:'danger',     label:'危険',         color:'#D70015', intent:'触ると障害・事故・データ消失などにつながる。変更は人の承認を得てから', order:2 },
+  { id:'blocker',    label:'ブロッカー',   color:'#3A3A3C', intent:'作業を止めている障害。これが解決しないと先に進めない',   order:3 },
+  { id:'rule',       label:'確定',         color:'#AF52DE', intent:'確定した事項。守るべき前提として扱い、反する変更・提案をしない', order:4 },
+  { id:'caution',    label:'注意',         color:'#FF9500', intent:'慎重に扱う。壊しやすい・副作用がある',                   order:5 },
+  { id:'risk',       label:'リスク',       color:'#B8860B', intent:'起こるかもしれない問題。影響と対策を考えて扱う',         order:6 },
+  { id:'bottleneck', label:'ボトルネック', color:'#C93400', intent:'全体の流れを遅くしている箇所。改善の優先候補',           order:7 },
+  { id:'pain',       label:'ペイン',       color:'#00C7BE', intent:'利用者や現場が困っている点（不満・負担）',               order:8 },
+  { id:'question',   label:'問題点',       color:'#FF2D55', intent:'解決が必要な点・迷っている点。作業前に人と確認する',     order:9 },
+  { id:'todo',       label:'タスク',       color:'#007AFF', intent:'実施すべき作業項目',                                     order:10 },
+  { id:'inprogress', label:'進行中',       color:'#FFCC00', intent:'作業中。途中の状態として扱い、完成品とみなさない',       order:11 },
+  { id:'checking',   label:'確認中',       color:'#32ADE6', intent:'確認している最中。結果が出るまで確定として扱わない',     order:12 },
+  { id:'planned',    label:'予定',         color:'#5856D6', intent:'これから行う予定。まだ実施していない',                   order:13 },
+  { id:'undecided',  label:'未定',         color:'#A2845E', intent:'まだ決まっていない。決めつけて進めず、人に確認する',     order:14 },
+  { id:'stopped',    label:'停止',         color:'#8E8E93', intent:'止めている。再開の指示があるまで手を付けない',           order:15 },
+  { id:'done',       label:'済',           color:'#34C759', intent:'完了している。やり直さない',                             order:16 },
 ];
+const TAG_ALIASES = { keep:'rule' }; // 廃止したタグ → まとめ先。旧「変更しない」（keep）は「確定」に統合（2026-11-26）
+const TAG_CONFLICTS = [ // 同時に付くと矛盾・打ち消しあうタグの組。tags のうち2つ以上が同じ要素に付いたら矛盾。行を足せば増える
+  { tags:['planned','inprogress','stopped','done'], reason:'状態は1つのはず（予定・進行中・停止・済は同時に付かない）' },
+  { tags:['rule','undecided'], reason:'確定と未定は打ち消しあう' },
+  { tags:['undecided','done'], reason:'未定のまま済にはならない' },
+  { tags:['rule','checking'], reason:'確定と確認中は打ち消しあう' },
+  { tags:['checking','done'], reason:'確認中のまま済にはならない' },
+];
+/** 要素のタグ配列から矛盾する組を返す [{tags:[a,b,...], reason}] */
+function tagConflictsOf(tags){
+  const set=new Set((tags||[]).filter(Boolean)); const out=[];
+  for (const c of TAG_CONFLICTS){ const hit=c.tags.filter(t=>set.has(t)); if (hit.length>=2) out.push({tags:hit, reason:c.reason}); }
+  return out;
+}
+function tagLabel(id){ const d=TAG_DEFS.find(t=>t.id===id) || ((typeof state!=='undefined' && state.board && state.board.tags)||[]).find(t=>t.id===id); return d ? d.label : id; }
+/** 背景色に対して読みやすい文字色（黒/白） */
+function textOn(hex){ const m=/^#([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(hex||''); if(!m) return '#fff'; let h=m[1]; if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  const [r,g,b]=[0,2,4].map(i=>{ const v=parseInt(h.slice(i,i+2),16)/255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4); });
+  return (0.2126*r+0.7152*g+0.0722*b) > 0.5 ? '#1C1C1E' : '#fff'; }
 const PALETTE = { // 図形の塗り。JSONには色名で入る。dark はダークテーマ時の見た目（JSONの値は変わらない）
   default:{ fill:'#ffffff', stroke:'#3a3a3c', darkFill:'#2b2d31', darkStroke:'#c9cbd1' },
   gray:   { fill:'#f2f2f7', stroke:'#8E8E93', darkFill:'#3a3b40', darkStroke:'#aeaeb2' },
@@ -240,6 +363,7 @@ const PALETTE = { // 図形の塗り。JSONには色名で入る。dark はダ�
 };
 const NOTE_COLORS = { yellow:'#fff3a0', pink:'#ffd1dc', blue:'#cfe6ff', green:'#d4f5d0' };
 const LINE_STYLES = { solid:{ label:'実線', dash:null }, dashed:{ label:'破線', dash:'8 6' }, dotted:{ label:'点線', dash:'2 5' } };
+const LINE_ROUTES = { straight:{ label:'直線' }, elbow:{ label:'カギ線' } }; // 接続線の形。elbow は水平・垂直の線分だけで結ぶ（90度の角）
 
 const NOTE_COLORS_DARK = { yellow:'#5a4d14', pink:'#5c2b3a', blue:'#243f5e', green:'#24472c' };
 /* 現在の描画モード（ライト／ダーク）で使う色。要素の見た目だけが変わり、JSONの色名は変わらない */
@@ -314,19 +438,30 @@ const THEMES = [ // テーマ＝ベース（UIの地色）とキーカラー（�
 ];
 const DEFAULT_THEME = 'fog-cobalt';
 const THEME_KEY = 'claude-board:theme';
+/* 注意が必要な文（命令・コマンド・送信の依頼に見える文）。ボードは他人から受け取ることもあるため、読み込み時に人へ知らせる。
+   スキルの board_summary.py の SUSPICIOUS_PATTERNS と揃える */
+const SUSPICIOUS_PATTERNS = [
+  { label:'指示の上書き',     re:/(ignore|disregard|forget)\s+(all\s+|any\s+)?(the\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)|(前|上|これまで|以前)の(指示|命令|ルール|プロンプト)を(無視|忘れ|破棄)/i },
+  { label:'役割の変更',       re:/(you are now|act as|pretend to be|system prompt|システムプロンプト|あなたは今から|今からあなたは|開発者モード|developer mode|jailbreak)/i },
+  { label:'コマンド実行',     re:/(rm\s+-rf|sudo\s|curl\s|wget\s|chmod\s|powershell|bash\s+-c|eval\(|exec\(|os\.system|subprocess|\|\s*sh\b)/i },
+  { label:'送信・外部アクセス', re:/(https?:\/\/|ftp:\/\/|webhook|(を|に)(送信|アップロード|転送)して|send (it |this |the )?(to|via)|upload (it |this |the )?to|exfiltrat)/i },
+  { label:'秘密情報',         re:/(\.env\b|\.ssh\b|id_rsa|\.aws\/credentials|(api[\s_-]?key|apiキー|secret|token|password|パスワード|秘密鍵|認証情報|credential)[^\n。]{0,20}?(を|の)?\s*(表示|出力|教え|送|貼|読|見せ|print|show|send|reveal|cat\b)|(print|show|send|reveal|display|cat)\s[^\n]{0,20}(api[\s_-]?key|secret|token|password|credential)|\b(sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}))/i },
+  { label:'見えない文字',     re:/[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/ },
+];
 const TOUR_KEY = 'claude-board:tour-done';
 const TOUR_STEPS = [ // ツアーの手順。target は CSS セレクタ（null なら画面中央）。行を足せば増える
   { target:null,            title:'Zukai Prompt へようこそ', body:'言葉で伝えにくい指示を、図にして Claude に渡すためのホワイトボードです。1分ほどで使い方を案内します。' },
   { target:'#toolbar',      title:'ツールパレット',   body:'矩形・楕円・テキスト・見出し・矢印・線・付箋。クリックするか、キー（R / O / T / H / A / L / N）で切り替えます。' },
   { target:'#canvas-wrap',  title:'キャンバス',       body:'ツールを選んでクリックすると置けて、そのまま文字を打てます。ダブルクリックで編集、ドラッグで移動、角のハンドルでサイズ変更。<kbd>⌘</kbd>+ホイールでズーム、Space+ドラッグで移動。<kbd>⌘C</kbd> <kbd>⌘V</kbd> でコピペ、<kbd>⌘D</kbd> で複製。' },
   { target:'.field.instruction', title:'Claude への指示', body:'この図で何をしてほしいかを一言で。「赤枠の部分だけ直して。他は触らない」のように、図と合わせて読まれます。' },
-  { target:'#props',        title:'インスペクタとタグ', body:'要素を選ぶと、ここでタグ（重要・決まり事・変更しない・注意・疑問・やること）や色、文字サイズ・太字を変えられます。矢印を選ぶと向き・線の種類も。タグは Claude が優先順位や禁止事項として読み取ります。' },
-  { target:'#btn-export',   title:'書き出し',         body:'「JSONを書き出し」で名前.board.json を保存し、Claude に「このファイルを見て○○して」と頼みます。「PNGを書き出し」は人が確認する用の画像です。「クリア」でボードを空にします。' },
+  { target:'#props',        title:'インスペクタとタグ', body:'要素を選ぶと、ここでタグ（重要・危険・ブロッカー・確定・注意・リスク・ボトルネック・ペイン・問題点・タスク、状態の 進行中・確認中・予定・未定・停止・済）や色、文字サイズ・太字・取り消し線、図形の取り消しの斜線を変えられます。矢印を選ぶと向き・線の種類・線の形（直線／カギ線）も。タグは Claude が優先順位や禁止事項、進み具合として読み取ります。進行中と済のように矛盾するタグは ⚠ で知らせ、Claude も作業前に確認します。' },
+  { target:'#btn-export',   title:'書き出し',         body:'「JSONを書き出し」で名前.board.json を保存し、Claude に「このファイルを見て○○して」と頼みます。「PNGを書き出し」「SVGを書き出し」は人が確認したり資料に貼ったりする用の画像です（SVG は拡大しても劣化しません）。「クリア」でボードを空にします。' },
   { target:'#btn-paste',    title:'JSON を貼り付け',  body:'逆に Claude が返した JSON は、ここに貼り付けるかキャンバスで <kbd>⌘V</kbd> すると、そのまま図として開けます。' },
   { target:'#btn-theme',    title:'テーマ',           body:'ベースの色とキーカラーの組み合わせを、ライト／ダークあわせて 40 種から選べます。' },
+  { target:'#btn-settings', title:'困ったときは',     body:'動かなくなったら、右上のギアから「初期化…」で最初の状態に戻せます。初期化の前に今のボードを JSON で書き出すこともできます。画面が開かないときは、URL の末尾に <kbd>?reset</kbd> を付けて開き直してください。' },
   { target:'#btn-tour',     title:'ツアーはいつでも', body:'この「?」からもう一度見られます。それでは、描き始めましょう。' },
 ];
-const LIMITS = { warnBytes:10*1024*1024, maxLoadBytes:50*1024*1024, historyDepth:100, zoomMin:0.25, zoomMax:4 };
+const LIMITS = { warnBytes:10*1024*1024, maxLoadBytes:50*1024*1024, maxElements:5000, maxConnections:10000, maxCoord:1e6, maxSize:1e5, maxTextLength:10000, maxTitleLength:200, maxInstructionLength:5000, historyDepth:100, zoomMin:0.25, zoomMax:4 };
 const FORMAT = 'claude-board', VERSION = 1, AUTOSAVE_KEY = 'claude-board:autosave';
 
 /* =====================================================================
@@ -339,7 +474,7 @@ function emptyBoard(){
 }
 const state = {
   board: emptyBoard(), selection:new Set(), tool:'select', view:{x:0,y:0,scale:1},
-  editing:null, drag:null, idSeq:{e:1,c:1}, lastSave:null, renderMode:'light',
+  editing:null, drag:null, idSeq:{e:1,c:1}, lastSave:null, renderMode:'light', lastRoute:'straight',
 };
 function nextId(prefix){ let id; do { id = prefix + (state.idSeq[prefix]++); } while (findAny(id)); return id; }
 function findEl(id){ return state.board.elements.find(e=>e.id===id) || null; }
@@ -397,10 +532,12 @@ const Commands = {
   addConnection(from, to, arrow='forward'){
     if (from===to || !findEl(from) || !findEl(to)) return null;
     if (state.board.connections.some(c=>c.from===from && c.to===to)) return null;
-    const c = { id:nextId('c'), from, to, arrow, label:'', style:'solid' };
+    const c = { id:nextId('c'), from, to, arrow, label:'', style:'solid', route:LINE_ROUTES[state.lastRoute]?state.lastRoute:'straight' };
     state.board.connections.push(c); History.commit('connect'); return c.id;
   },
-  updateConnection(id, patch){ const c=findConn(id); if(!c) return null; Object.assign(c, patch); History.commit('update conn'); return id; },
+  updateConnection(id, patch){ const c=findConn(id); if(!c) return null; Object.assign(c, patch); if (patch.route) state.lastRoute=patch.route; /* 次に引く線も同じ形にする */ History.commit('update conn'); return id; },
+  /** 真偽の印（strike 取り消し線／crossed 取り消しの斜線）を切り替える。全部 on なら off に、それ以外は全部 on に */
+  toggleFlag(ids, key){ const els=ids.map(findEl).filter(Boolean); if (!els.length) return null; const all=els.every(e=>e[key]); for (const e of els){ if (all) delete e[key]; else e[key]=true; } History.commit(key); return !all; },
   reverseConnections(ids){ const S=new Set(ids); for (const c of state.board.connections) if (S.has(c.id)){ [c.from,c.to]=[c.to,c.from]; } History.commit('reverse'); return ids; },
   deleteConnections(ids){ const S=new Set(ids); state.board.connections = state.board.connections.filter(c=>!S.has(c.id)); for (const id of S) state.selection.delete(id); History.commit('delete conn'); return [...S]; },
   setTags(ids, tagId, on){
@@ -427,12 +564,13 @@ const Commands = {
     const map={}; let z=maxZ()+1; const newIds=[];
     const els=[...clip.elements].sort((a,b)=>(a.z??0)-(b.z??0)).map(e=>{ const n=clone(e); map[e.id]=n.id=nextId('e'); n.x+=dx; n.y+=dy; n.z=z++; newIds.push(n.id); return n; });
     state.board.elements.push(...els);
-    for (const c of clip.connections||[]){ if (map[c.from] && map[c.to]) state.board.connections.push({ id:nextId('c'), from:map[c.from], to:map[c.to], arrow:c.arrow||'forward', label:c.label||'', style:c.style||'solid' }); }
+    for (const c of clip.connections||[]){ if (map[c.from] && map[c.to]) state.board.connections.push({ id:nextId('c'), from:map[c.from], to:map[c.to], arrow:c.arrow||'forward', label:c.label||'', style:c.style||'solid', route:c.route||'straight' }); }
     History.commit('paste'); return newIds;
   },
   duplicate(ids){ return Commands.pasteClip(Commands.copyClip(ids)); },
-  newBoard(){ state.board = emptyBoard(); state.selection.clear(); state.idSeq={e:1,c:1}; state.view={x:0,y:0,scale:1}; History.reset(); afterChange(); },
-  loadBoard(board){ state.board = board; state.selection.clear(); resetIdSeq(); History.reset(); afterChange(); },
+  newBoard({undoable=false}={}){ state.board = emptyBoard(); state.selection.clear(); state.idSeq={e:1,c:1}; state.view={x:0,y:0,scale:1}; if (undoable) History.commit('clear'); else { History.reset(); afterChange(); } },
+  /** ボードを置き換える。undoable:true なら1回の操作として履歴に積み、⌘Z で前のボードに戻せる（起動時の復元だけは履歴を作り直す） */
+  loadBoard(board, {undoable=false}={}){ state.board = board; state.selection.clear(); resetIdSeq(); if (undoable) History.commit('load'); else { History.reset(); afterChange(); } },
 };
 
 /* =====================================================================
@@ -453,7 +591,7 @@ const Geom = {
   hitTestConnection(board, px, py, tol=6){
     for (const c of [...board.connections].reverse()){
       const p = Geom.connectionPath(board, c); if (!p) continue;
-      if (Geom.distToSegment(px,py,p.x1,p.y1,p.x2,p.y2) <= tol) return c.id;
+      for (let i=1;i<p.points.length;i++){ const a=p.points[i-1], b=p.points[i]; if (Geom.distToSegment(px,py,a.x,a.y,b.x,b.y) <= tol) return c.id; }
     }
     return null;
   },
@@ -472,8 +610,34 @@ const Geom = {
     const a=board.elements.find(e=>e.id===conn.from), b=board.elements.find(e=>e.id===conn.to);
     if (!a || !b) return null;
     const ba=Geom.bbox(a), bb=Geom.bbox(b);
+    if (conn.route==='elbow') return Geom.elbowPath(a, b);
     const p1=Geom.anchor(a, bb.cx, bb.cy), p2=Geom.anchor(b, ba.cx, ba.cy);
-    return { x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y };
+    return { x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, points:[p1,p2], mid:{x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2} };
+  },
+  /** カギ線：辺の中点から出て、水平・垂直の線分だけで結ぶ。より大きく離れている向き（左右か上下）で出入りする辺を決め、間の中央で折る */
+  elbowPath(a, b){
+    const A=Geom.bbox(a), B=Geom.bbox(b);
+    const gapX = Math.max(B.x-(A.x+A.w), A.x-(B.x+B.w)), gapY = Math.max(B.y-(A.y+A.h), A.y-(B.y+B.h));
+    let pts;
+    if (gapX > 0 && gapX >= gapY){ // 左右に離れている → 横の辺から出て、間の中央で縦に折る
+      const r = B.cx>=A.cx ? 1 : -1;
+      const p1={x:A.cx+r*A.w/2, y:A.cy}, p2={x:B.cx-r*B.w/2, y:B.cy}, mx=(p1.x+p2.x)/2;
+      pts=[p1,{x:mx,y:p1.y},{x:mx,y:p2.y},p2];
+    } else if (gapY > 0){ // 上下に離れている → 縦の辺から出て、間の中央で横に折る
+      const d = B.cy>=A.cy ? 1 : -1;
+      const p1={x:A.cx, y:A.cy+d*A.h/2}, p2={x:B.cx, y:B.cy-d*B.h/2}, my=(p1.y+p2.y)/2;
+      pts=[p1,{x:p1.x,y:my},{x:p2.x,y:my},p2];
+    } else { // 重なっている → 同じ側の辺から出て外側を回る（B の中心がある側）
+      const r = B.cx>=A.cx ? 1 : -1, ox = r>0 ? Math.max(A.x+A.w,B.x+B.w)+24 : Math.min(A.x,B.x)-24;
+      const p1={x:A.cx+r*A.w/2, y:A.cy}, p2={x:B.cx+r*B.w/2, y:B.cy};
+      pts=[p1,{x:ox,y:p1.y},{x:ox,y:p2.y},p2];
+    }
+    pts = pts.filter((q,i)=>i===0 || Math.abs(q.x-pts[i-1].x)>0.5 || Math.abs(q.y-pts[i-1].y)>0.5); // 一直線に並ぶときの長さ0の線分を除く（矢印の向きが乱れないように）
+    if (pts.length===1) pts.push({...pts[0]});
+    pts = pts.filter((q,i)=>i===0 || i===pts.length-1 || !((q.x===pts[i-1].x && q.x===pts[i+1].x) || (q.y===pts[i-1].y && q.y===pts[i+1].y))); // 一直線に並んだ途中の点を除く
+    const m = pts.length>=4 ? {x:(pts[1].x+pts[2].x)/2, y:(pts[1].y+pts[2].y)/2} : {x:(pts[0].x+pts[pts.length-1].x)/2, y:(pts[0].y+pts[pts.length-1].y)/2};
+    const f=pts[0], l=pts[pts.length-1];
+    return { x1:f.x, y1:f.y, x2:l.x, y2:l.y, points:pts, mid:m };
   },
   toRelative(el, x, y){ return { rx:(x-el.x)/el.w, ry:(y-el.y)/el.h }; },
   screenToCanvas(view, sx, sy){ return { x:(sx-view.x)/view.scale, y:(sy-view.y)/view.scale }; },
@@ -495,8 +659,9 @@ const IO = {
     const out = { format:FORMAT, version:VERSION, title:board.title||'', instruction:board.instruction||'',
       createdAt:board.createdAt||new Date().toISOString(), canvas:{ width:Math.round(cb.w), height:Math.round(cb.h) },
       tags:board.tags||tagDefsForBoard(),
+      tagConflicts:TAG_CONFLICTS.map(c=>({tags:[...c.tags],reason:c.reason})),
       elements:board.elements.map(e=>{ const o={id:e.id,type:e._unknownType||e.type,x:e.x,y:e.y,w:e.w,h:e.h}; for (const k of Object.keys(e)) if(!(k in o) && k!=='_unknownType' && k!=='tags' && k!=='z') o[k]=e[k]; o.tags=e.tags||[]; o.z=e.z??0; return o; }),
-      connections:board.connections.map(c=>({id:c.id,from:c.from,to:c.to,arrow:c.arrow||'forward',label:c.label||'',style:c.style||'solid'})),
+      connections:board.connections.map(c=>({id:c.id,from:c.from,to:c.to,arrow:c.arrow||'forward',label:c.label||'',style:c.style||'solid',route:c.route||'straight'})),
     };
     return JSON.stringify(out, null, 2);
   },
@@ -508,10 +673,17 @@ const IO = {
       if (typeof obj.version!=='number') errors.push('version が数値ではありません');
       if (!Array.isArray(obj.elements)) errors.push('elements が配列ではありません');
       if (!Array.isArray(obj.connections)) errors.push('connections が配列ではありません');
-      if (Array.isArray(obj.elements)){
+      if (Array.isArray(obj.elements) && obj.elements.length > LIMITS.maxElements) errors.push(`要素が多すぎます（${obj.elements.length}個。上限 ${LIMITS.maxElements}個）`);
+      if (Array.isArray(obj.connections) && obj.connections.length > LIMITS.maxConnections) errors.push(`接続が多すぎます（${obj.connections.length}本。上限 ${LIMITS.maxConnections}本）`);
+      if (Array.isArray(obj.elements) && errors.length===0){
         const seen=new Set();
         for (const e of obj.elements){
+          if (!e || typeof e!=='object'){ errors.push('要素がオブジェクトではありません'); continue; }
           for (const k of ['id','type','x','y','w','h']) if (e[k]===undefined) errors.push(`要素 ${e.id??'?'} に ${k} がありません`);
+          for (const k of ['x','y','w','h']) if (e[k]!==undefined && !(typeof e[k]==='number' && Number.isFinite(e[k]))) errors.push(`要素 ${e.id??'?'} の ${k} が数値ではありません`);
+          for (const k of ['x','y']) if (Number.isFinite(e[k]) && Math.abs(e[k])>LIMITS.maxCoord) errors.push(`要素 ${e.id??'?'} の ${k} が範囲外です`);
+          for (const k of ['w','h']) if (Number.isFinite(e[k]) && e[k]>LIMITS.maxSize) errors.push(`要素 ${e.id??'?'} の ${k} が大きすぎます`);
+          if (errors.length>20){ errors.push('…（以下省略）'); break; }
           if (seen.has(e.id)) warnings.push(`要素IDが重複: ${e.id}`); seen.add(e.id);
         }
         if (Array.isArray(obj.connections)) for (const c of obj.connections){
@@ -524,7 +696,8 @@ const IO = {
   migrate(obj){
     const warnings=[]; const b = clone(obj);
     if (b.version!==VERSION) warnings.push(`version ${b.version} を ${VERSION} として読みます`);
-    b.title = b.title||''; b.instruction = b.instruction||''; b.createdAt = b.createdAt||new Date().toISOString();
+    const cap = (v, max, what) => { v = (v===undefined||v===null) ? '' : String(v); if (v.length>max){ warnings.push(`${what}が長すぎるため ${max} 文字で切りました`); v=v.slice(0,max); } return v; };
+    b.title = cap(b.title, LIMITS.maxTitleLength, 'タイトル'); b.instruction = cap(b.instruction, LIMITS.maxInstructionLength, '指示欄'); b.createdAt = typeof b.createdAt==='string' ? b.createdAt : new Date().toISOString();
     b.canvas = b.canvas||{width:0,height:0};
     if (!Array.isArray(b.tags)){ // 旧形式 {id:label} も受ける
       b.tags = b.tags && typeof b.tags==='object' ? Object.entries(b.tags).map(([id,label])=>({id,label,intent:''})) : tagDefsForBoard();
@@ -532,11 +705,18 @@ const IO = {
     const BAD_KEYS = new Set(['__proto__','constructor','prototype']);
     const scrub = o => { if (o && typeof o==='object') for (const k of Object.keys(o)) if (BAD_KEYS.has(k)) delete o[k]; return o; };
     b.tags = b.tags.filter(t=>t && typeof t==='object').map(t=>({ id:String(t.id), label:String(t.label??t.id), intent:String(t.intent??''), ...(typeof t.color==='string' && /^#[0-9a-f]{3,8}$/i.test(t.color) ? {color:t.color} : {}) }));
+    const aliased=new Set();
+    { const known=new Map(tagDefsForBoard().map(t=>[t.id,t])); const custom=b.tags.filter(t=>!known.has(t.id) && !TAG_ALIASES[t.id]); // 既知のタグは今の表示名・意図に揃え（旧「決まり事」→「確定」など）、独自タグは残す
+      b.tags=[...known.values(), ...custom]; }
+    delete b.tagConflicts; // 矛盾の定義はファイルではなくアプリの設定を使う（書き出し時に付け直す）
     b.elements = (b.elements||[]).map((e,i)=>{ scrub(e); scrub(e.target);
       if (e.type==='callout'){ // 吹き出しは廃止（使いにくかったため）。付箋に変換する
         delete e.target; e.type='note'; e.color=e.color||'yellow'; warnings.push(`吹き出し ${e.id} は付箋に変換しました`); }
-      e.tags = (Array.isArray(e.tags)?e.tags:[]).filter(t=>typeof t==='string'); if (typeof e.z!=='number') e.z=i;
-      if (typeof e.text!=='undefined' && typeof e.text!=='string') e.text=String(e.text);
+      e.id = String(e.id);
+      e.tags = [...new Set((Array.isArray(e.tags)?e.tags:[]).filter(t=>typeof t==='string').map(t=>{ if (TAG_ALIASES[t]){ aliased.add(t); return TAG_ALIASES[t]; } return t; }))].slice(0,20); if (!Number.isFinite(e.z)) e.z=i;
+      for (const k of ['bold','strike','crossed']) if (k in e){ if (e[k]===true) continue; delete e[k]; } // 真偽の印は true のときだけ持つ
+      if (typeof e.text!=='undefined') e.text = cap(e.text, LIMITS.maxTextLength, `要素 ${e.id} の文字`);
+      e.w = Math.max(1, e.w); e.h = Math.max(1, e.h);
       if (e.type==='image'){ // 画像機能は廃止（セキュリティ上の判断）。位置だけ残し、画像データは捨てる
         delete e.src; delete e.naturalWidth; delete e.naturalHeight; e._unknownType='image'; e.type='unknown'; e.text=e.text??''; e.fontSize=e.fontSize||'m'; warnings.push(`画像 ${e.id} は対応しないため枠だけにしました`); }
       if (!ELEMENT_TYPES[e.type] || e.type==='unknown'){ if (e.type!=='unknown') e._unknownType=e.type; e.type='unknown'; e.text = e.text??''; e.fontSize=e.fontSize||'m'; }
@@ -545,18 +725,28 @@ const IO = {
       if (e.type==='note' && !NOTE_COLORS[e.color]) e.color='yellow';
       return e;
     });
+    for (const t of aliased) warnings.push(`タグ「${t==='keep'?'変更しない':t}」は廃止したため「${tagLabel(TAG_ALIASES[t])}」にまとめました`);
     const ids = new Set(b.elements.map(e=>e.id));
-    b.connections = (b.connections||[]).map(scrub).filter(c=>{ const ok=ids.has(c.from)&&ids.has(c.to); if(!ok) warnings.push(`接続 ${c.id} は端点が無いため捨てました`); return ok; })
-      .map(c=>({ id:c.id, from:c.from, to:c.to, arrow:['none','forward','both'].includes(c.arrow)?c.arrow:'forward', label:c.label||'',
-        style:LINE_STYLES[c.style]?c.style:'solid' })); // 旧ファイルの width/color は読み捨てる（機能削除）
+    b.connections = (b.connections||[]).filter(c=>c && typeof c==='object').map(scrub).map(c=>({...c, from:String(c.from), to:String(c.to)})).filter(c=>{ const ok=ids.has(c.from)&&ids.has(c.to); if(!ok) warnings.push(`接続 ${c.id} は端点が無いため捨てました`); return ok; })
+      .map(c=>({ id:String(c.id), from:c.from, to:c.to, arrow:['none','forward','both'].includes(c.arrow)?c.arrow:'forward', label:cap(c.label, 200, `接続 ${c.id} のラベル`),
+        style:LINE_STYLES[c.style]?c.style:'solid', route:LINE_ROUTES[c.route]?c.route:'straight' })); // 旧ファイルの width/color は読み捨てる（機能削除）
     return { board:b, warnings };
+  },
+  /** ボード内の文字から、命令・コマンド・送信依頼・秘密情報・見えない文字に見えるものを探す */
+  findSuspicious(board){
+    const hits=[]; const check=(where, text)=>{ if (!text) return; for (const p of SUSPICIOUS_PATTERNS) if (p.re.test(text)) hits.push({ where, label:p.label, text:String(text).slice(0,60) }); };
+    check('タイトル', board.title); check('指示欄', board.instruction);
+    for (const e of board.elements) check(`要素 ${e.id}`, e.text);
+    for (const c of board.connections) check(`接続 ${c.id}`, c.label);
+    for (const t of board.tags||[]) { check(`タグ ${t.id}`, t.label); check(`タグ ${t.id}`, t.intent); }
+    return hits;
   },
   parse(text){
     let obj; try { obj = JSON.parse(text); } catch(e){ throw new Error('JSONの構文エラー: '+e.message); }
     const v = IO.validate(obj); if (!v.ok) throw new Error('ボード形式が不正: '+v.errors.join(' / '));
-    const m = IO.migrate(obj); return { board:m.board, warnings:[...v.warnings, ...m.warnings] };
+    const m = IO.migrate(obj); return { board:m.board, warnings:[...v.warnings, ...m.warnings], suspicious:IO.findSuspicious(m.board) };
   },
-  autosave(){ try { localStorage.setItem(AUTOSAVE_KEY, IO.serialize(state.board)); state.lastSave=new Date(); UI.footer(); } catch(e){ /* 容量超など */ } },
+  autosave(){ if (window.__zpResetting) return; try { localStorage.setItem(AUTOSAVE_KEY, IO.serialize(state.board)); state.lastSave=new Date(); UI.footer(); } catch(e){ /* 容量超など */ } },
   restore(){ const t=localStorage.getItem(AUTOSAVE_KEY); if(!t) return false; const r=IO.parse(t); Commands.loadBoard(r.board); return true; },
   fileBase(){ return (state.board.title||'board').replace(/[\\/:*?"<>|]/g,'_'); },
   downloadJSON(){
@@ -565,20 +755,40 @@ const IO = {
     download(new Blob([text],{type:'application/json'}), IO.fileBase()+'.board.json'); return true;
   },
   async copyJSON(){ try { await navigator.clipboard.writeText(IO.serialize(state.board)); UI.message('JSONをコピーしました','info'); } catch(e){ UI.message('コピーできません。書き出しを使ってください'); } },
-  async exportPNG(){
-    const b = Geom.contentBounds(state.board); if (!b.w||!b.h){ UI.message('書き出す要素がありません'); return null; }
-    const m=40, vb={x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m}, scale=2;
-    const prevMode=state.renderMode; if (prevMode!=='light'){ state.renderMode='light'; render(); }
+  /** 書き出し用の色。テーマに関係なく常にライト配色（白地）で出す */
+  EXPORT_TOKENS: { '--conn':'#3a3a3c', '--accent':'#3a3a3c', '--ink':'#1d1d1f', '--paper':'#ffffff', '--separator-2':'rgba(0,0,0,.18)' },
+  /** CSS 変数 var(--x[, fallback]) を実際の値に置き換える（外部のSVGツールでも同じ見た目にするため） */
+  resolveVars(text){
+    const root=getComputedStyle(document.documentElement);
+    return String(text).replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)/g, (m,name,fb)=> IO.EXPORT_TOKENS[name] ?? (root.getPropertyValue(name).trim() || (fb||'').trim() || 'currentColor'));
+  },
+  /** 書き出し用の SVG 要素を組み立てる。要素が無ければ null。戻り値 {svg, vb}（width/height は等倍） */
+  buildExportSVG(){
+    const b = Geom.contentBounds(state.board); if (!b.w||!b.h) return null;
+    const m=40, vb={x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m};
+    const prevMode=state.renderMode; if (prevMode!=='light'){ state.renderMode='light'; render(); }   // 図形・付箋の色もライトで描き直す
     const svg = document.getElementById('canvas').cloneNode(true);
     if (prevMode!=='light'){ state.renderMode=prevMode; render(); }
+    svg.removeAttribute('id'); svg.removeAttribute('class'); svg.removeAttribute('style');
     svg.querySelector('#layer-overlay').remove(); svg.querySelector('#world').removeAttribute('transform');
-    svg.style.setProperty('--conn','#3a3a3c'); svg.style.setProperty('--accent','#3a3a3c'); svg.style.setProperty('--ink','#1d1d1f'); svg.style.setProperty('--paper','#ffffff'); svg.style.setProperty('--separator-2','rgba(0,0,0,.18)'); for (const g of svg.querySelectorAll('.conn.selected')) g.classList.remove('selected');
-    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); svg.setAttribute('width', vb.w*scale); svg.setAttribute('height', vb.h*scale);
-    const bg = document.createElementNS('http://www.w3.org/2000/svg','rect'); Object.entries({x:vb.x,y:vb.y,width:vb.w,height:vb.h,fill:'#fff'}).forEach(([k,v])=>bg.setAttribute(k,v));
-    svg.insertBefore(bg, svg.querySelector('#world'));
-    const style = document.createElementNS('http://www.w3.org/2000/svg','style');
-    style.textContent = [...document.styleSheets[0].cssRules].map(r=>r.cssText).filter(t=>/\.(el|conn|tagbadge)/.test(t)).join('\n');
-    svg.insertBefore(style, svg.firstChild);
+    for (const g of svg.querySelectorAll('.conn.selected')) g.classList.remove('selected');
+    for (const h of svg.querySelectorAll('.conn path.hit')) h.remove();                                   // 当たり判定用の透明線は不要
+    for (const mk of svg.querySelectorAll('marker path')) mk.setAttribute('fill', IO.EXPORT_TOKENS['--conn']); // context-stroke 非対応のツール向けに実色で
+    svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); svg.setAttribute('width', vb.w); svg.setAttribute('height', vb.h);
+    const NS='http://www.w3.org/2000/svg';
+    const title=document.createElementNS(NS,'title'); title.textContent=state.board.title||'Zukai Prompt';
+    const bg=document.createElementNS(NS,'rect'); Object.entries({x:vb.x,y:vb.y,width:vb.w,height:vb.h,fill:'#ffffff'}).forEach(([k,v])=>bg.setAttribute(k,v));
+    const style=document.createElementNS(NS,'style');
+    style.textContent = IO.resolveVars([...document.styleSheets[0].cssRules].map(r=>r.cssText).filter(t=>/\.(el|conn|tagbadge)/.test(t)).join('\n'));
+    svg.insertBefore(bg, svg.querySelector('#world')); svg.insertBefore(style, svg.firstChild); svg.insertBefore(title, svg.firstChild);
+    for (const n of svg.querySelectorAll('*')) for (const at of [...n.attributes]) if (at.value.includes('var(')) n.setAttribute(at.name, IO.resolveVars(at.value));
+    return { svg, vb };
+  },
+  async exportPNG(){
+    const r = IO.buildExportSVG(); if (!r){ UI.message('書き出す要素がありません'); return null; }
+    const { svg, vb } = r, scale=2;
+    svg.setAttribute('width', vb.w*scale); svg.setAttribute('height', vb.h*scale);
     const xml = new XMLSerializer().serializeToString(svg);
     const url = URL.createObjectURL(new Blob([xml],{type:'image/svg+xml;charset=utf-8'}));
     const img = new Image(); await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
@@ -586,11 +796,17 @@ const IO = {
     URL.revokeObjectURL(url);
     const blob = await new Promise(res=>cv.toBlob(res,'image/png')); download(blob, IO.fileBase()+'.board.png'); return blob;
   },
+  /** ベクター形式で書き出す。Figma・Illustrator・ブラウザで開ける単体の SVG（外部参照・CSS変数なし） */
+  exportSVG(){
+    const r = IO.buildExportSVG(); if (!r){ UI.message('書き出す要素がありません'); return null; }
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(r.svg);
+    const blob = new Blob([xml], {type:'image/svg+xml;charset=utf-8'}); download(blob, IO.fileBase()+'.board.svg'); return xml;
+  },
   async openFile(file, at){
     if (/\.json$/i.test(file.name) || file.type==='application/json'){
       if (file.size > LIMITS.maxLoadBytes) throw new Error(`ファイルが大きすぎます（上限 ${LIMITS.maxLoadBytes/1048576}MB）`);
-      const text = await file.text(); const r = IO.parse(text); Commands.loadBoard(r.board);
-      if (r.warnings.length) UI.message('読み込み時の警告: '+r.warnings.join(' / '), 'info'); else UI.message(`${file.name} を読み込みました`,'info');
+      const text = await file.text(); const r = IO.parse(text); Commands.loadBoard(r.board, {undoable:true});
+      UI.reportLoad(r, file.name);
       return 'board';
     }
     void at; throw new Error('対応していないファイルです（ボードJSONのみ開けます）: '+file.name);
@@ -623,14 +839,26 @@ function textBlock(el, {pad=8, align='center', valign='middle', color=null}={}){
   const total = lines.length*lh;
   let y0 = valign==='top' ? el.y+pad+fs : el.y+el.h/2-total/2+fs*0.85;
   const x = align==='left' ? el.x+pad : el.x+el.w/2;
-  const t = S('text',{'font-size':fs,'text-anchor':align==='left'?'start':'middle',fill:color,'font-weight':el.bold?700:null});
+  const t = S('text',{'font-size':fs,'text-anchor':align==='left'?'start':'middle',fill:color,'font-weight':el.bold?700:null,'text-decoration':el.strike?'line-through':null});
   lines.forEach((ln,i)=>t.appendChild(S('tspan',{x, y:y0+i*lh, text:ln||' '})));
   return t;
 }
-function drawRect(el){ const p=shapeColor(el.fill), s=shapeColor(el.stroke); return [S('rect',{class:'shape',x:el.x,y:el.y,width:el.w,height:el.h,rx:8,fill:p.fill,stroke:s.stroke}), textBlock(el)]; }
-function drawEllipse(el){ const p=shapeColor(el.fill), s=shapeColor(el.stroke); return [S('ellipse',{class:'shape',cx:el.x+el.w/2,cy:el.y+el.h/2,rx:el.w/2,ry:el.h/2,fill:p.fill,stroke:s.stroke}), textBlock(el)]; }
+/** 取り消しの斜線：左下 → 右上。楕円は外接矩形の対角線と楕円の交点まで */
+function crossLine(el){ if (!el.crossed) return null; const s=shapeColor(el.stroke);
+  const k = el.type==='ellipse' ? (1-Math.SQRT1_2)/2 : 0, ix=el.w*k, iy=el.h*k;
+  return S('line',{class:'cross',x1:el.x+ix,y1:el.y+el.h-iy,x2:el.x+el.w-ix,y2:el.y+iy,stroke:s.stroke,'stroke-width':2,'stroke-linecap':'round'}); }
+function drawRect(el){ const p=shapeColor(el.fill), s=shapeColor(el.stroke); return [S('rect',{class:'shape',x:el.x,y:el.y,width:el.w,height:el.h,rx:8,fill:p.fill,stroke:s.stroke}), textBlock(el), crossLine(el)].filter(Boolean); }
+function drawEllipse(el){ const p=shapeColor(el.fill), s=shapeColor(el.stroke); return [S('ellipse',{class:'shape',cx:el.x+el.w/2,cy:el.y+el.h/2,rx:el.w/2,ry:el.h/2,fill:p.fill,stroke:s.stroke}), textBlock(el), crossLine(el)].filter(Boolean); }
 function drawText(el){ return [S('rect',{x:el.x,y:el.y,width:el.w,height:el.h,fill:'transparent'}), textBlock(el,{align:'left',valign:'top'})]; }
-function drawNote(el){ return [S('rect',{class:'shape',x:el.x,y:el.y,width:el.w,height:el.h,fill:noteColor(el.color),stroke:isDark()?'rgba(255,255,255,.15)':'rgba(0,0,0,.15)'}), textBlock(el,{align:'left',valign:'top'})]; }
+/** 付箋：罫線なし。紙の影と、右下を少し折り返した角（折り返しは裏面の少し濃い色＋光沢、下に落ちる影） */
+function drawNote(el){
+  const {x,y,w,h}=el, f=Math.max(6, Math.min(18, w*0.14, h*0.14)), c=noteColor(el.color);
+  const body=S('path',{class:'shape paper',d:`M${x},${y} H${x+w} V${y+h-f} L${x+w-f},${y+h} H${x} Z`,fill:c,filter:'url(#note-shadow)'});
+  const shade=S('path',{d:`M${x+w},${y+h-f} L${x+w-f},${y+h} L${x+w-f*1.05},${y+h-f*0.92} Z`,fill:'rgba(0,0,0,.10)'}); // 折り目の下に落ちる影
+  const flap=S('path',{class:'flap',d:`M${x+w},${y+h-f} L${x+w-f},${y+h} Q${x+w-f*0.98},${y+h-f*0.62} ${x+w-f*0.92},${y+h-f*0.92} Q${x+w-f*0.62},${y+h-f*0.98} ${x+w},${y+h-f} Z`,fill:c});
+  const shine=S('path',{d:flap.getAttribute('d'),fill:'url(#note-flap)'});
+  return [body, shade, flap, shine, textBlock(el,{align:'left',valign:'top'})];
+}
 function drawHeading(el){ // 見出し：左の短い縦バー＋太字＋下線。あしらいはシンプルに
   const bar=S('rect',{x:el.x,y:el.y+6,width:4,height:el.h-12,rx:2,fill:'var(--accent)'});
   const rule=S('line',{x1:el.x,y1:el.y+el.h-1,x2:el.x+el.w,y2:el.y+el.h-1,stroke:inkColor(),'stroke-width':1,'stroke-opacity':.35});
@@ -643,7 +871,7 @@ function drawTags(el){
   for (const tid of [...tags].reverse()){
     const def = TAG_DEFS.find(t=>t.id===tid) || (state.board.tags||[]).find(t=>t.id===tid) || {label:tid,color:'#888'};
     const label=def.label||tid; measureCtx.font='600 10px sans-serif'; const w=Math.ceil(measureCtx.measureText(label).width)+10;
-    x-=w+2; g.appendChild(S('rect',{x,y:el.y-9,width:w,height:16,rx:8,fill:def.color||'#888'})); g.appendChild(S('text',{x:x+w/2,y:el.y+3,'text-anchor':'middle',text:label}));
+    x-=w+2; g.appendChild(S('rect',{x,y:el.y-9,width:w,height:16,rx:8,fill:def.color||'#888',stroke:isDark()?'rgba(255,255,255,.45)':null,'stroke-width':isDark()?1:null})); /* ダークでは縁取り（暗い色のタグが背景に沈まないように） */ g.appendChild(S('text',{x:x+w/2,y:el.y+3,'text-anchor':'middle',text:label,style:'fill:'+textOn(def.color||'#888')}));
   }
   return g;
 }
@@ -657,11 +885,11 @@ function render(){
   }
   for (const c of b.connections){
     const p=Geom.connectionPath(b,c); if(!p) continue; const sel=state.selection.has(c.id);
-    const d=`M${p.x1},${p.y1} L${p.x2},${p.y2}`;
+    const d='M'+p.points.map(q=>q.x+','+q.y).join(' L');
     const st=LINE_STYLES[c.style]||LINE_STYLES.solid;
     const line=S('path',{class:'line',d,'marker-end':c.arrow!=='none'?'url(#arrow-end)':null,'marker-start':c.arrow==='both'?'url(#arrow-end)':null,'stroke-dasharray':st.dash});
     const g=S('g',{class:'conn'+(sel?' selected':''),'data-id':c.id},[S('path',{class:'hit',d}),line]);
-    if (c.label){ const mx=(p.x1+p.x2)/2, my=(p.y1+p.y2)/2; measureCtx.font='12px sans-serif'; const w=measureCtx.measureText(c.label).width+10; g.appendChild(S('rect',{class:'lbl',x:mx-w/2,y:my-9,width:w,height:18,rx:4})); g.appendChild(S('text',{x:mx,y:my+4,'text-anchor':'middle',text:c.label})); }
+    if (c.label){ const mx=p.mid.x, my=p.mid.y; measureCtx.font='12px sans-serif'; const w=measureCtx.measureText(c.label).width+10; g.appendChild(S('rect',{class:'lbl',x:mx-w/2,y:my-9,width:w,height:18,rx:4})); g.appendChild(S('text',{x:mx,y:my+4,'text-anchor':'middle',text:c.label})); }
     layC.appendChild(g);
   }
   // overlay
@@ -776,6 +1004,7 @@ const Interaction = (()=>{
     const mod=e.metaKey||e.ctrlKey;
     if (mod && e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?History.redo():History.undo(); return; }
     if (mod && e.key.toLowerCase()==='a'){ e.preventDefault(); state.selection=new Set(state.board.elements.map(x=>x.id)); render(); return; }
+    if (mod && e.shiftKey && e.key.toLowerCase()==='x'){ const ids=[...state.selection].filter(id=>{ const el=findEl(id); return el && (ELEMENT_TYPES[el.type]||{}).hasText; }); if (!ids.length) return; e.preventDefault(); Commands.toggleFlag(ids,'strike'); return; }
     if (mod && (e.key.toLowerCase()==='c' || e.key.toLowerCase()==='x')){ const ids=[...state.selection].filter(findEl); if (!ids.length) return; e.preventDefault();
       Clipboard.copy(ids); if (e.key.toLowerCase()==='x') Commands.deleteElements(ids); return; }
     if (mod && e.key.toLowerCase()==='b'){ const ids=[...state.selection].filter(id=>{ const el=findEl(id); return el && (ELEMENT_TYPES[el.type]||{}).hasText; }); if (!ids.length) return; e.preventDefault(); const all=ids.every(id=>findEl(id).bold); for (const id of ids) findEl(id).bold=!all; History.commit('bold'); return; }
@@ -798,7 +1027,7 @@ const Interaction = (()=>{
     if (UI.tryLoadJSONText(text)) e.preventDefault(); });
   const wrap=document.getElementById('canvas-wrap');
   wrap.addEventListener('dragover', e=>e.preventDefault());
-  wrap.addEventListener('drop', async e=>{ e.preventDefault(); const p=pt(e); for (const f of e.dataTransfer.files){ try { await IO.openFile(f,p); } catch(err){ UI.message(err.message); } } });
+  wrap.addEventListener('drop', async e=>{ e.preventDefault(); const p=pt(e); for (const f of e.dataTransfer.files){ try { await UI.openWithConfirm(f,p); } catch(err){ UI.message(err.message); } } });
   return { setTool, pt };
 })();
 
@@ -814,7 +1043,7 @@ const Editor = (()=>{
       borderRadius: el.type==='ellipse' ? '50%' : (el.type==='rect' ? '8px' : '6px'),
       paddingLeft: (el.type==='ellipse' ? el.w*v*0.15 : el.type==='heading' ? 14*v : 6)+'px', paddingRight: (el.type==='ellipse' ? el.w*v*0.15 : 6)+'px',
       fontWeight: el.bold?'700':'400'});
-    ta.style.fontWeight=el.bold?'700':'400'; ta.value=(el.text||'') + (typed||'');
+    ta.style.fontWeight=el.bold?'700':'400'; ta.style.textDecoration=el.strike?'line-through':'none'; ta.value=(el.text||'') + (typed||'');
     fitPadding(center ? el : null);
     render();
     const focusNow=()=>{ if (state.editing!==id) return; ta.focus({preventScroll:true}); const n=ta.value.length; ta.setSelectionRange(n,n);
@@ -827,6 +1056,7 @@ const Editor = (()=>{
   ta.addEventListener('input', ()=>fitPadding(centerEl));
   ta.addEventListener('blur', finish);
   ta.addEventListener('keydown', e=>{ if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='b'){ e.preventDefault(); const el=findEl(state.editing); if (el){ el.bold=!el.bold; ta.style.fontWeight=el.bold?'700':'400'; } return; }
+    if ((e.metaKey||e.ctrlKey) && e.shiftKey && e.key.toLowerCase()==='x'){ e.preventDefault(); const el=findEl(state.editing); if (el){ if (el.strike) delete el.strike; else el.strike=true; ta.style.textDecoration=el.strike?'line-through':'none'; } e.stopPropagation(); return; }
     if (e.key==='Escape' || (e.key==='Enter' && (e.metaKey||e.ctrlKey))){ e.preventDefault(); finish(); } else if (e.key==='Tab'){ e.preventDefault(); finish(); } e.stopPropagation(); });
   ta.addEventListener('pointerdown', e=>e.stopPropagation());
   // Enter キーで編集を開いた直後、その同じキー入力による改行が入力欄に入らないようにする
@@ -845,8 +1075,17 @@ const UI = (()=>{
     const b=document.createElement('button'); b.dataset.tool=t.id; b.title=t.label+(t.key?` (${t.key.toUpperCase()})`:'');
     b.innerHTML=`<span class="pill"><svg viewBox="0 0 24 24">${t.icon}</svg></span><span>${t.label}</span>${t.key?`<kbd>${t.key.toUpperCase()}</kbd>`:''}`;
     b.onclick=()=>Interaction.setTool(t.id); tb.appendChild(b); }
-  $('file-json').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ await IO.openFile(f); }catch(err){ message(err.message); } e.target.value=''; };
-  $('btn-new').onclick=()=>{ if (!state.board.elements.length || confirm('ボードを空にします。よろしいですか？（書き出していない内容は失われます）')) Commands.newBoard(); };
+  /** 今のボードに要素があれば、置き換えてよいか確認する（置き換えは ⌘Z で戻せる） */
+  function confirmReplace(what){ return !state.board.elements.length || confirm(`${what}で今のボードを置き換えます。よろしいですか？\n（置き換えたあとも ⌘Z で元に戻せます）`); }
+  async function openWithConfirm(f, at){ if (/\.json$/i.test(f.name) || f.type==='application/json'){ if (!confirmReplace(`「${f.name}」`)) return false; } await IO.openFile(f, at); return true; }
+  /** 読み込み結果の通知。注意が必要な文があれば、Claude に渡す前に確認するよう促す */
+  function reportLoad(r, name){
+    const sus=r.suspicious||[];
+    if (sus.length){ const kinds=[...new Set(sus.map(h=>h.label))].join('・'); const places=[...new Set(sus.map(h=>h.where))]; const where=places.slice(0,3).join('、')+(places.length>3?' ほか':'');
+      message(`注意：このボードには命令・コマンド・送信依頼などに見える文が ${places.length} か所あります（${kinds}／${where}）。他の人から受け取ったボードなら、Claude に渡す前に内容を確認してください。`, 'error', 15000); return; }
+    if (r.warnings.length) message(`${name} を読み込みました（警告: ${r.warnings.join(' / ')}）`, 'info'); else message(`${name} を読み込みました`, 'info'); }
+  $('file-json').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ await openWithConfirm(f); }catch(err){ message(err.message); } e.target.value=''; };
+  $('btn-new').onclick=()=>{ if (!state.board.elements.length || confirm('ボードを空にします。よろしいですか？\n（クリアしたあとも ⌘Z で元に戻せます）')) Commands.newBoard({undoable:true}); };
   $('btn-open').onclick=()=>$('file-json').click();
   // JSON を直接貼り付けて読み込む（ダイアログ）
   const dlg=$('paste-dialog'), pasteText=$('paste-text'), pasteHint=$('paste-hint');
@@ -854,7 +1093,9 @@ const UI = (()=>{
   function closePaste(){ dlg.classList.remove('open'); pasteText.value=''; }
   function loadPasted(){ const text=pasteText.value.trim(); if(!text){ pasteHint.textContent='JSON が空です'; return false; }
     if (text.length > LIMITS.maxLoadBytes){ pasteHint.textContent=`JSON が大きすぎます（上限 ${LIMITS.maxLoadBytes/1048576}MB）`; return false; }
-    try { const r=IO.parse(text); Commands.loadBoard(r.board); closePaste(); message(r.warnings.length?('読み込みました（警告: '+r.warnings.join(' / ')+'）'):'貼り付けた JSON を読み込みました','info'); return true; }
+    let r; try { r=IO.parse(text); } catch(err){ pasteHint.textContent=err.message; return false; }
+    if (!confirmReplace('貼り付けた JSON')) return false;
+    try { Commands.loadBoard(r.board, {undoable:true}); closePaste(); reportLoad(r, '貼り付けた JSON'); return true; }
     catch(err){ pasteHint.textContent=err.message; return false; } }
   $('btn-paste').onclick=()=>openPaste();
   $('paste-cancel').onclick=closePaste; $('paste-load').onclick=loadPasted;
@@ -863,10 +1104,11 @@ const UI = (()=>{
   function isPasteOpen(){ return dlg.classList.contains('open'); }
   /** クリップボードのテキストがボード JSON なら読み込む（キャンバスへの ⌘V 用）。読み込んだら true */
   function tryLoadJSONText(text){ if (!text || !/^\s*\{/.test(text) || !/"format"\s*:\s*"claude-board"/.test(text)) return false;
-    if (state.board.elements.length && !confirm('貼り付けた JSON でボードを置き換えます。よろしいですか？')) return true;
-    try { const r=IO.parse(text); Commands.loadBoard(r.board); message('貼り付けた JSON を読み込みました','info'); } catch(err){ openPaste(text); pasteHint.textContent=err.message; } return true; }
+    if (!confirmReplace('貼り付けた JSON')) return true;
+    try { const r=IO.parse(text); Commands.loadBoard(r.board, {undoable:true}); reportLoad(r, '貼り付けた JSON'); } catch(err){ openPaste(text); pasteHint.textContent=err.message; } return true; }
   $('btn-export').onclick=()=>{ if (IO.downloadJSON()) message('JSONを書き出しました。確認用の画像が必要なら「PNGを書き出し」を押してください','info'); };
   $('btn-png').onclick=()=>IO.exportPNG().catch(err=>message('PNG書き出しに失敗: '+err.message));
+  $('btn-svg').onclick=()=>{ try { if (IO.exportSVG()) message('SVGを書き出しました','info'); } catch(err){ message('SVG書き出しに失敗: '+err.message); } };
   $('btn-copy').onclick=()=>IO.copyJSON();
   $('btn-undo').onclick=()=>History.undo(); $('btn-redo').onclick=()=>History.redo();
   // テーマ：ベース色とキーカラーから UI トークンを導出する
@@ -905,7 +1147,7 @@ const UI = (()=>{
     b.innerHTML=`<span class="sw"></span><span>${t.label.split('と')[0]}</span>`; b.onclick=()=>applyTheme(t.id); $(t.mode==='dark'?'theme-dark':'theme-light').appendChild(b); }
   const themePop=$('theme-popover');
   $('btn-theme').onclick=e=>{ e.stopPropagation(); themePop.classList.toggle('open'); };
-  document.addEventListener('pointerdown', e=>{ if (!e.target.closest('.popover-wrap')) themePop.classList.remove('open'); });
+  document.addEventListener('pointerdown', e=>{ if (!e.target.closest('#theme-popover') && !e.target.closest('#btn-theme')) themePop.classList.remove('open'); });
   applyTheme(currentTheme());
   // ツアー
   const Tour = (()=>{
@@ -935,7 +1177,7 @@ const UI = (()=>{
   $('title').addEventListener('input', e=>{ state.board.title=e.target.value; }); $('title').addEventListener('change', ()=>History.commit('title'));
   $('instruction').addEventListener('input', e=>{ state.board.instruction=e.target.value; }); $('instruction').addEventListener('change', ()=>History.commit('instruction'));
   let msgTimer=null;
-  function message(text, kind='error'){ const m=$('msg'); m.textContent=text; m.className=kind+' show'; clearTimeout(msgTimer); msgTimer=setTimeout(()=>m.classList.remove('show'), kind==='error'?6000:4000); }
+  function message(text, kind='error', ms){ const m=$('msg'); m.textContent=text; m.className=kind+' show'; clearTimeout(msgTimer); msgTimer=setTimeout(()=>m.classList.remove('show'), ms || (kind==='error'?6000:4000)); }
   function deleteSelection(){ const els=[...state.selection].filter(findEl), cs=[...state.selection].filter(findConn); if (els.length) Commands.deleteElements(els); if (cs.length) Commands.deleteConnections(cs); }
   function footer(){ $('st-counts').textContent=`要素: ${state.board.elements.length} 接続: ${state.board.connections.length}`; $('st-zoom').textContent=`ズーム: ${Math.round(state.view.scale*100)}%`; $('st-save').textContent='自動保存: '+(state.lastSave?state.lastSave.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'—'); }
   function props(){
@@ -952,6 +1194,7 @@ const UI = (()=>{
       sec('接続 '+c.id, sel, inp);
       const segOf=(defs,cur,key)=>{ const seg=document.createElement('div'); seg.className='segmented'; for (const [k,v] of Object.entries(defs)){ const b=document.createElement('button'); b.textContent=v.label; b.className=cur===k?'on':''; b.onclick=()=>Commands.updateConnection(c.id,{[key]:k}); seg.appendChild(b); } return seg; };
       sec('線の種類', segOf(LINE_STYLES, c.style||'solid', 'style'));
+      sec('線の形', segOf(LINE_ROUTES, c.route||'straight', 'route'));
       sec('操作', btns(btn('向きを逆にする',()=>Commands.reverseConnections([c.id])), btn('削除',()=>Commands.deleteConnections([c.id]),'text error'))); return;
     }
     const ids=els.map(e=>e.id);
@@ -961,16 +1204,22 @@ const UI = (()=>{
       const l=document.createElement('label'); l.className='chip chk'+(on?' on':''); l.dataset.tag=t.id; const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=on; cb.indeterminate=n>0&&n<els.length;
       cb.onchange=()=>Commands.setTags(ids,t.id,cb.checked);
       const dot=document.createElement('span'); dot.className='tagdot'; dot.style.background=t.color; l.append(cb,dot,document.createTextNode(t.label)); tagBox.appendChild(l); }
-    sec(`タグ（${els.length}件選択）`, tagBox);
+    const conflictNodes=[]; for (const e of els){ for (const c of tagConflictsOf(e.tags)){ const d=document.createElement('div'); d.className='tagwarn'; d.textContent=`⚠ ${els.length>1?(e.text||e.id).slice(0,12)+': ':''}${c.tags.map(t=>'['+tagLabel(t)+']').join('と')} — ${c.reason}`; conflictNodes.push(d); } }
+    sec(`タグ（${els.length}件選択）`, tagBox, ...conflictNodes);
     if (els.every(e=>e.type==='rect'||e.type==='ellipse')){
       const sw=document.createElement('div'); sw.className='swatches'; for (const name of Object.keys(PALETTE)){ const c=shapeColor(name); const s=document.createElement('div'); s.className='swatch'+(els.every(e=>e.fill===name)?' on':''); s.style.background=c.fill; s.style.borderColor=c.stroke; s.title=name; s.onclick=()=>{ for(const id of ids) Object.assign(findEl(id),{fill:name,stroke:name}); History.commit('color'); }; sw.appendChild(s); } sec('色', sw);
+    }
+    if (els.every(e=>e.type==='rect'||e.type==='ellipse')){
+      const allX=els.every(e=>e.crossed); const xb=btn(allX?'斜線を消す':'斜線を引く（取り消し）',()=>Commands.toggleFlag(ids,'crossed'), allX?'filled':''); xb.dataset.act='crossed';
+      sec('取り消し', btns(xb));
     }
     if (els.every(e=>e.type==='note')){
       const sw=document.createElement('div'); sw.className='swatches'; for (const name of Object.keys(NOTE_COLORS)){ const s=document.createElement('div'); s.className='swatch'+(els.every(e=>e.color===name)?' on':''); s.style.background=noteColor(name); s.onclick=()=>{ for(const id of ids) findEl(id).color=name; History.commit('note color'); }; sw.appendChild(s); } sec('付箋の色', sw);
     }
     if (els.every(e=>(ELEMENT_TYPES[e.type]||{}).hasText)){
       const allBold=els.every(e=>e.bold); const bb=btn(allBold?'太字を解除':'太字にする（⌘B）',()=>{ for(const id of ids) findEl(id).bold=!allBold; History.commit('bold'); }, allBold?'filled':'');
-      sec('文字', btns(bb));
+      const allStrike=els.every(e=>e.strike); const sb=btn(allStrike?'取り消し線を解除':'取り消し線（⌘⇧X）',()=>Commands.toggleFlag(ids,'strike'), allStrike?'filled':''); sb.dataset.act='strike';
+      sec('文字', btns(bb, sb));
       const seg=document.createElement('div'); seg.className='segmented';
       for (const k of Object.keys(FONT_SIZES)){ const b=document.createElement('button'); b.textContent={s:'小',m:'中',l:'大'}[k]; b.className=els.every(e=>e.fontSize===k)?'on':''; b.onclick=()=>{ for(const id of ids) findEl(id).fontSize=k; History.commit('font'); }; seg.appendChild(b); }
       sec('文字サイズ', seg);
@@ -983,19 +1232,27 @@ const UI = (()=>{
     $('btn-undo').disabled=!History.canUndo(); $('btn-redo').disabled=!History.canRedo();
     footer(); props();
   }
-  return { message, sync, footer, deleteSelection, openPaste, tryLoadJSONText, isPasteOpen, applyTheme, currentTheme, Tour };
+  return { message, sync, footer, deleteSelection, openPaste, tryLoadJSONText, isPasteOpen, openWithConfirm, reportLoad, confirmReplace, applyTheme, currentTheme, Tour };
 })();
 
 /* =====================================================================
  * 起動・公開
  * ===================================================================== */
-window.Board = { state, Config:{TAG_DEFS,PALETTE,NOTE_COLORS,FONT_SIZES,ELEMENT_TYPES,TOOLS,SHORTCUTS,LIMITS,THEMES,FORMAT,VERSION}, UI, Clipboard, Geom, Commands, IO, History, render, Interaction, Editor, findEl, findConn };
+window.Board = { state, Config:{TAG_DEFS,TAG_ALIASES,TAG_CONFLICTS,LINE_STYLES,LINE_ROUTES,PALETTE,NOTE_COLORS,FONT_SIZES,ELEMENT_TYPES,TOOLS,SHORTCUTS,LIMITS,THEMES,SUSPICIOUS_PATTERNS,FORMAT,VERSION}, UI, Clipboard, Geom, Commands, IO, History, render, tagConflictsOf, textOn, Interaction, Editor, findEl, findConn };
 (function boot(){
   History.reset();
   try { if (!IO.restore()) afterChange(); else UI.message('前回の内容を復元しました','info'); }
-  catch(e){ afterChange(); UI.message('自動保存の復元に失敗しました: '+e.message); }
+  catch(e){
+    // 自動保存が壊れていても起動できるように、壊れたデータは別名に退避して空のボードで始める（初期化の「書き出す」で取り出せる）
+    try { localStorage.setItem('claude-board:autosave-broken', localStorage.getItem(AUTOSAVE_KEY)||''); localStorage.removeItem(AUTOSAVE_KEY); } catch(_){}
+    state.board=emptyBoard(); state.selection.clear(); History.reset();
+    try { afterChange(); } catch(_){}
+    UI.message('前回の内容を復元できなかったため、空のボードで起動しました（'+e.message+'）。壊れたデータは右上のギア → 初期化 で書き出せます。');
+  }
   Interaction.setTool('select');
-  if (!UI.Tour.seen()) setTimeout(()=>UI.Tour.start(), 400); // 初回だけ自動でツアー
+  window.__zpBooted=true;
+  if (window.__zpResetNotice) UI.message(window.__zpResetNotice, 'info');
+  if (!UI.Tour.seen()) setTimeout(()=>{ if (!UI.Tour.seen() && !UI.Tour.active) UI.Tour.start(); }, 400); // 初回だけ自動でツアー（待つ間に既読になったら出さない）
 })();
 </script>
 </body>
