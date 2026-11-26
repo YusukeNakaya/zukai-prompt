@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Zukai Prompt — 図解でClaudeに伝える</title>
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%23007AFF%27/%3E%3Cg fill=%27none%27 stroke=%27%23fff%27 stroke-width=%275.5%27 stroke-linecap=%27round%27%3E%3Crect x=%2713%27 y=%2715%27 width=%2738%27 height=%2727%27 rx=%275%27/%3E%3Cpath d=%27M23 51h18%27/%3E%3C/g%3E%3C/svg%3E">
 <style>
 /* ===== Apple Human Interface Guidelines（macOS ライト）に合わせたトークン ===== */
 :root{
@@ -902,7 +903,48 @@ function render(){
 }
 function normRect(a,b){ return { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), width:Math.abs(a.x-b.x), height:Math.abs(a.y-b.y) }; }
 let saveTimer=null;
-function afterChange(){ render(); clearTimeout(saveTimer); saveTimer=setTimeout(IO.autosave, 500); }
+function afterChange(){ render(); clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ IO.autosave(); Favicon.update(); }, 500); }
+
+/* ブラウザタブのアイコン（favicon）に、いま描いている図を小さく映す。
+   16〜32px では文字は読めないので、図形の塗り・枠と接続線だけを太めに描く（文字・タグ・矢印の先・見出し・テキストは省く）。
+   配色はテーマに関係なく常にライト（タブの地の色はブラウザが決めるため、白い地を敷く）。図形が無いときはアプリのアイコン。
+   作った画像はページ内でだけ使い、どこにも送らない */
+const Favicon = (()=>{
+  const SIZE=64, PAD=5, SHAPES=['rect','ellipse','note','unknown'];
+  const esc=v=>String(v).replace(/[^#0-9a-zA-Z.(),\-]/g,''); // 色・数値だけを通す（属性に入れるため）
+  function appIcon(){ const a=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#007AFF';
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${esc(a)}"/><g fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"><rect x="13" y="15" width="38" height="27" rx="5"/><path d="M23 51h18"/></g></svg>`; }
+  /** ボードから favicon 用の SVG 文字列を作る。図形が無ければ null */
+  function build(board){
+    const els=board.elements.filter(e=>SHAPES.includes(e.type)).sort((a,b)=>(a.z??0)-(b.z??0)); if (!els.length) return null;
+    const x0=Math.min(...els.map(e=>e.x)), y0=Math.min(...els.map(e=>e.y)), x1=Math.max(...els.map(e=>e.x+e.w)), y1=Math.max(...els.map(e=>e.y+e.h));
+    const inner=SIZE-PAD*2, k=inner/Math.max(x1-x0, y1-y0, 1), ox=PAD+(inner-(x1-x0)*k)/2, oy=PAD+(inner-(y1-y0)*k)/2;
+    const X=v=>+(ox+(v-x0)*k).toFixed(2), Y=v=>+(oy+(v-y0)*k).toFixed(2), L=v=>+Math.max(1.2, v*k).toFixed(2);
+    const sw=3, out=[`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}"><rect width="${SIZE}" height="${SIZE}" rx="12" fill="#fff"/><rect x=".5" y=".5" width="${SIZE-1}" height="${SIZE-1}" rx="11.5" fill="none" stroke="rgba(0,0,0,.18)"/>`];
+    for (const e of els){
+      const x=X(e.x), y=Y(e.y), w=L(e.w), h=L(e.h);
+      if (e.type==='note') out.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${esc(NOTE_COLORS[e.color]||NOTE_COLORS.yellow)}" stroke="rgba(0,0,0,.28)" stroke-width="1.2"/>`);
+      else { const p=PALETTE[e.fill]||PALETTE.default, q=PALETTE[e.stroke]||PALETTE.default;
+        out.push(e.type==='ellipse' ? `<ellipse cx="${x+w/2}" cy="${y+h/2}" rx="${w/2}" ry="${h/2}" fill="${esc(p.fill)}" stroke="${esc(q.stroke)}" stroke-width="${sw}"/>`
+                                    : `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(4, w/4, h/4)}" fill="${esc(p.fill)}" stroke="${esc(q.stroke)}" stroke-width="${sw}"/>`); }
+    }
+    const ids=new Set(els.map(e=>e.id));
+    for (const c of board.connections){ if (!ids.has(c.from)||!ids.has(c.to)) continue; const pth=Geom.connectionPath(board,c); if (!pth) continue;
+      out.push(`<path d="M${pth.points.map(q=>X(q.x)+','+Y(q.y)).join(' L')}" fill="none" stroke="#3a3a3c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`); }
+    out.push('</svg>'); return out.join('');
+  }
+  let last=null, seq=0;
+  /** いまのボードで favicon を差し替える（同じ絵なら何もしない）。PNG にしてから設定（SVG の favicon に対応しないブラウザ向け）。失敗したら SVG のまま */
+  function update(){
+    const link=document.getElementById('favicon'); if (!link) return;
+    const svg=build(state.board)||appIcon(); if (svg===last) return; last=svg; const my=++seq;
+    const svgUrl='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    const set=(href,type)=>{ if (my!==seq) return; link.type=type; link.href=href; };
+    try { const img=new Image(); img.onload=()=>{ try { const cv=document.createElement('canvas'); cv.width=cv.height=SIZE; cv.getContext('2d').drawImage(img,0,0,SIZE,SIZE); set(cv.toDataURL('image/png'),'image/png'); } catch(e){ set(svgUrl,'image/svg+xml'); } };
+      img.onerror=()=>set(svgUrl,'image/svg+xml'); img.src=svgUrl; } catch(e){ set(svgUrl,'image/svg+xml'); }
+  }
+  return { build, update, appIcon, reset(){ last=null; } };
+})();
 
 /* 要素のクリップボード：OS のクリップボードにクリップ形式の JSON を書き、読めないときは内部に持ったものを使う */
 const Clipboard = (()=>{
@@ -1141,7 +1183,7 @@ const UI = (()=>{
     document.documentElement.dataset.mode=t.mode; if (state.renderMode!==t.mode){ state.renderMode=t.mode; render(); }
     try { localStorage.setItem(THEME_KEY,t.id); } catch(e){}
     for (const b of document.querySelectorAll('#theme-popover .accent')) b.classList.toggle('on', b.dataset.theme===t.id);
-    $('theme-name').textContent=`${t.label}（${t.mode==='dark'?'ダーク':'ライト'}）`; return t.id; }
+    $('theme-name').textContent=`${t.label}（${t.mode==='dark'?'ダーク':'ライト'}）`; Favicon.update(); return t.id; } // 図が空のときのアプリのアイコンはキーカラー
   function currentTheme(){ try { return localStorage.getItem(THEME_KEY)||DEFAULT_THEME; } catch(e){ return DEFAULT_THEME; } }
   for (const t of THEMES){ const b=document.createElement('button'); b.className='accent'; b.dataset.theme=t.id; b.title=t.label; b.style.setProperty('--sw-base',t.base); b.style.setProperty('--sw-key',t.key);
     b.innerHTML=`<span class="sw"></span><span>${t.label.split('と')[0]}</span>`; b.onclick=()=>applyTheme(t.id); $(t.mode==='dark'?'theme-dark':'theme-light').appendChild(b); }
@@ -1238,7 +1280,7 @@ const UI = (()=>{
 /* =====================================================================
  * 起動・公開
  * ===================================================================== */
-window.Board = { state, Config:{TAG_DEFS,TAG_ALIASES,TAG_CONFLICTS,LINE_STYLES,LINE_ROUTES,PALETTE,NOTE_COLORS,FONT_SIZES,ELEMENT_TYPES,TOOLS,SHORTCUTS,LIMITS,THEMES,SUSPICIOUS_PATTERNS,FORMAT,VERSION}, UI, Clipboard, Geom, Commands, IO, History, render, tagConflictsOf, textOn, Interaction, Editor, findEl, findConn };
+window.Board = { state, Config:{TAG_DEFS,TAG_ALIASES,TAG_CONFLICTS,LINE_STYLES,LINE_ROUTES,PALETTE,NOTE_COLORS,FONT_SIZES,ELEMENT_TYPES,TOOLS,SHORTCUTS,LIMITS,THEMES,SUSPICIOUS_PATTERNS,FORMAT,VERSION}, UI, Clipboard, Geom, Commands, IO, History, Favicon, render, tagConflictsOf, textOn, Interaction, Editor, findEl, findConn };
 (function boot(){
   History.reset();
   try { if (!IO.restore()) afterChange(); else UI.message('前回の内容を復元しました','info'); }
